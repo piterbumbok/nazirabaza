@@ -74,7 +74,7 @@ async function initDatabase() {
     console.log('🔧 Initializing database...');
     
     db.serialize(() => {
-      // Create cabins table with additional fields
+      // Create cabins table with ALL necessary fields
       db.run(`
         CREATE TABLE IF NOT EXISTS cabins (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,6 +96,19 @@ async function initDatabase() {
       `, (err) => {
         if (err) console.error('Error creating cabins table:', err);
         else console.log('✅ Cabins table ready');
+      });
+
+      // Add missing columns to existing table
+      db.run(`ALTER TABLE cabins ADD COLUMN active BOOLEAN DEFAULT 1`, (err) => {
+        // Ignore error if column already exists
+      });
+      
+      db.run(`ALTER TABLE cabins ADD COLUMN distance_to_sea TEXT`, (err) => {
+        // Ignore error if column already exists
+      });
+      
+      db.run(`ALTER TABLE cabins ADD COLUMN map_url TEXT`, (err) => {
+        // Ignore error if column already exists
       });
 
       // Create settings table
@@ -150,15 +163,6 @@ async function initDatabase() {
       `, (err) => {
         if (err) console.error('Error creating reviews table:', err);
         else console.log('✅ Reviews table ready');
-      });
-
-      // Add new columns to existing cabins table if they don't exist
-      db.run(`ALTER TABLE cabins ADD COLUMN distance_to_sea TEXT`, (err) => {
-        // Ignore error if column already exists
-      });
-      
-      db.run(`ALTER TABLE cabins ADD COLUMN map_url TEXT`, (err) => {
-        // Ignore error if column already exists
       });
 
       // Insert default admin credentials if not exists
@@ -392,7 +396,7 @@ app.get('/api/cabins/:id', (req, res) => {
       mapUrl: row.map_url
     };
     
-    console.log(`✅ Returned cabin: ${cabin.name}`);
+    console.log(`✅ Returned cabin: ${cabin.name} with map: ${cabin.mapUrl ? 'YES' : 'NO'}`);
     res.json(cabin);
   });
 });
@@ -415,6 +419,8 @@ app.post('/api/cabins', (req, res) => {
     distanceToSea,
     mapUrl
   } = req.body;
+
+  console.log('📍 Map URL received:', mapUrl);
 
   db.run(`
     INSERT INTO cabins (name, description, price_per_night, location, bedrooms, bathrooms, max_guests, amenities, images, featured, active, distance_to_sea, map_url)
@@ -463,7 +469,7 @@ app.post('/api/cabins', (req, res) => {
         mapUrl: row.map_url
       };
 
-      console.log(`✅ Created cabin: ${cabin.name}`);
+      console.log(`✅ Created cabin: ${cabin.name} with map: ${cabin.mapUrl ? 'YES' : 'NO'}`);
       res.status(201).json(cabin);
     });
   });
@@ -489,6 +495,8 @@ app.put('/api/cabins/:id', (req, res) => {
     distanceToSea,
     mapUrl
   } = req.body;
+
+  console.log('📍 Map URL for update:', mapUrl);
 
   db.run(`
     UPDATE cabins 
@@ -546,7 +554,7 @@ app.put('/api/cabins/:id', (req, res) => {
         mapUrl: row.map_url
       };
 
-      console.log(`✅ Updated cabin: ${cabin.name}`);
+      console.log(`✅ Updated cabin: ${cabin.name} with map: ${cabin.mapUrl ? 'YES' : 'NO'}`);
       res.json(cabin);
     });
   });

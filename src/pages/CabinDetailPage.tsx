@@ -46,38 +46,54 @@ const CabinDetailPage: React.FC = () => {
   const distanceToSea = cabinData.distanceToSea;
   const mapUrl = cabinData.mapUrl || '';
 
-  // Функция для обработки карты
+  console.log('🗺️ Map URL from cabin data:', mapUrl);
+
+  // Функция для обработки карты - УЛУЧШЕННАЯ ВЕРСИЯ
   const processMapUrl = (url: string): string => {
-    if (!url.trim()) return '';
+    if (!url || !url.trim()) {
+      console.log('❌ No map URL provided');
+      return '';
+    }
+    
+    const cleanUrl = url.trim();
+    console.log('🔍 Processing map URL:', cleanUrl);
     
     // Если это iframe, извлекаем src
-    if (url.includes('<iframe')) {
-      const srcMatch = url.match(/src="([^"]+)"/);
+    if (cleanUrl.includes('<iframe')) {
+      const srcMatch = cleanUrl.match(/src="([^"]+)"/);
       if (srcMatch) {
+        console.log('✅ Extracted from iframe:', srcMatch[1]);
         return srcMatch[1];
       }
     }
     
     // Если это уже готовая embed ссылка
-    if (url.includes('google.com/maps/embed')) {
-      return url;
+    if (cleanUrl.includes('google.com/maps/embed')) {
+      console.log('✅ Already embed URL');
+      return cleanUrl;
     }
     
     // Если это обычная ссылка Google Maps, конвертируем в embed
-    if (url.includes('google.com/maps') || url.includes('maps.google.com')) {
-      return url.replace('google.com/maps', 'google.com/maps/embed');
+    if (cleanUrl.includes('google.com/maps') || cleanUrl.includes('maps.google.com')) {
+      const embedUrl = cleanUrl.replace(/google\.com\/maps/g, 'google.com/maps/embed');
+      console.log('✅ Converted to embed:', embedUrl);
+      return embedUrl;
     }
     
     // Если это короткая ссылка goo.gl или maps.app.goo.gl
-    if (url.includes('goo.gl') || url.includes('maps.app.goo.gl')) {
-      // Для коротких ссылок создаем базовую embed карту
-      return 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3000!2d0!3d0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMDDCsDAwJzAwLjAiTiAwMMKwMDAnMDAuMCJF!5e0!3m2!1sen!2s!4v1234567890123!5m2!1sen!2s';
+    if (cleanUrl.includes('goo.gl') || cleanUrl.includes('maps.app.goo.gl')) {
+      // Для коротких ссылок возвращаем как есть - браузер сам перенаправит
+      console.log('✅ Short URL detected:', cleanUrl);
+      return cleanUrl;
     }
     
-    return url;
+    // Если это просто URL, возвращаем как есть
+    console.log('✅ Using URL as is:', cleanUrl);
+    return cleanUrl;
   };
 
   const embedMapUrl = processMapUrl(mapUrl);
+  console.log('🎯 Final embed URL:', embedMapUrl);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 main-content" style={{ zIndex: 10 }}>
@@ -153,9 +169,9 @@ const CabinDetailPage: React.FC = () => {
                   {distanceToSea && distanceToSea.trim() && ` В ${distanceToSea} ходьбы находится песчаный пляж.`}
                 </p>
                 
-                {/* Карта */}
+                {/* Карта - ИСПРАВЛЕННАЯ ВЕРСИЯ */}
                 {embedMapUrl ? (
-                  <div className="h-96 rounded-xl overflow-hidden border">
+                  <div className="h-96 rounded-xl overflow-hidden border border-gray-200">
                     <iframe
                       src={embedMapUrl}
                       width="100%"
@@ -165,16 +181,19 @@ const CabinDetailPage: React.FC = () => {
                       loading="lazy"
                       referrerPolicy="no-referrer-when-downgrade"
                       title="Карта расположения"
+                      onLoad={() => console.log('✅ Map iframe loaded successfully')}
+                      onError={() => console.log('❌ Map iframe failed to load')}
                     />
                   </div>
                 ) : (
-                  <div className="h-64 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
+                  <div className="h-64 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center border border-gray-200">
                     <div className="text-center">
                       <MapPin className="w-16 h-16 text-blue-600 mx-auto mb-4" />
                       <p className="text-blue-800 font-medium text-lg">Карта местности</p>
                       {distanceToSea && distanceToSea.trim() && (
                         <p className="text-blue-600">Расстояние до моря: {distanceToSea}</p>
                       )}
+                      <p className="text-blue-500 text-sm mt-2">Карта будет добавлена позже</p>
                     </div>
                   </div>
                 )}
