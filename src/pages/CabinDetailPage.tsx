@@ -13,7 +13,7 @@ const CabinDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-gray-50" style={{ zIndex: 10 }}>
         <Header phone="+7 965 411-15-55" />
         <div className="flex-grow flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -25,7 +25,7 @@ const CabinDetailPage: React.FC = () => {
 
   if (error || !cabin) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-gray-50" style={{ zIndex: 10 }}>
         <Header phone="+7 965 411-15-55" />
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center p-8">
@@ -41,40 +41,46 @@ const CabinDetailPage: React.FC = () => {
     );
   }
 
-  // Получаем дополнительные данные из cabin (они могут быть добавлены через API)
+  // Получаем дополнительные данные из cabin
   const cabinData = cabin as any;
   const distanceToSea = cabinData.distanceToSea;
   const mapUrl = cabinData.mapUrl || '';
 
-  // Функция для конвертации Google Maps ссылки в embed
-  const convertGoogleMapsUrl = (url: string): string => {
-    if (!url) return '';
+  // Функция для обработки карты
+  const processMapUrl = (url: string): string => {
+    if (!url.trim()) return '';
     
-    // Если это уже iframe src, возвращаем как есть
+    // Если это iframe, извлекаем src
+    if (url.includes('<iframe')) {
+      const srcMatch = url.match(/src="([^"]+)"/);
+      if (srcMatch) {
+        return srcMatch[1];
+      }
+    }
+    
+    // Если это уже готовая embed ссылка
     if (url.includes('google.com/maps/embed')) {
       return url;
     }
     
-    // Если это ссылка типа https://maps.app.goo.gl/...
-    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl')) {
-      // Для коротких ссылок Google Maps нужно использовать iframe с базовым URL
-      const shortId = url.split('/').pop();
-      return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3000!2d0!3d0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMDDCsDAwJzAwLjAiTiAwMMKwMDAnMDAuMCJF!5e0!3m2!1sen!2s!4v1234567890123!5m2!1sen!2s`;
+    // Если это обычная ссылка Google Maps, конвертируем в embed
+    if (url.includes('google.com/maps') || url.includes('maps.google.com')) {
+      return url.replace('google.com/maps', 'google.com/maps/embed');
     }
     
-    // Если это обычная ссылка Google Maps
-    if (url.includes('google.com/maps') || url.includes('maps.google.com')) {
-      // Извлекаем координаты или place_id из URL и создаем embed ссылку
-      return url.replace('google.com/maps', 'google.com/maps/embed');
+    // Если это короткая ссылка goo.gl или maps.app.goo.gl
+    if (url.includes('goo.gl') || url.includes('maps.app.goo.gl')) {
+      // Для коротких ссылок создаем базовую embed карту
+      return 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3000!2d0!3d0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMDDCsDAwJzAwLjAiTiAwMMKwMDAnMDAuMCJF!5e0!3m2!1sen!2s!4v1234567890123!5m2!1sen!2s';
     }
     
     return url;
   };
 
-  const embedMapUrl = convertGoogleMapsUrl(mapUrl);
+  const embedMapUrl = processMapUrl(mapUrl);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50 main-content" style={{ zIndex: 10 }}>
       <Header phone="+7 965 411-15-55" />
       
       <main className="flex-grow pt-20">

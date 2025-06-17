@@ -318,7 +318,7 @@ const AdminPage: React.FC = () => {
   // Форма логина
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 px-4" style={{ zIndex: 100 }}>
         <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
@@ -374,9 +374,9 @@ const AdminPage: React.FC = () => {
 
   // Главная админ панель
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" style={{ zIndex: 100, position: 'relative' }}>
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-sm border-b" style={{ zIndex: 50 }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-xl font-bold text-gray-900">Админ панель</h1>
@@ -663,8 +663,9 @@ const AdminPage: React.FC = () => {
                           </div>
                         </div>
                         
-                        <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                          <p className="text-gray-700 break-words whitespace-pre-wrap">{review.comment}</p>
+                        {/* Исправленное отображение отзыва в админке */}
+                        <div className="bg-gray-50 rounded-lg p-4 mb-4 max-w-full overflow-hidden">
+                          <p className="admin-review-text text-gray-700 break-words whitespace-pre-wrap">{review.comment}</p>
                         </div>
                         
                         <div className="flex items-center space-x-2">
@@ -933,6 +934,37 @@ const CabinForm: React.FC<{
     setFormData({ ...formData, amenities: newAmenities });
   };
 
+  // Функция для обработки карты
+  const processMapUrl = (url: string): string => {
+    if (!url.trim()) return '';
+    
+    // Если это iframe, извлекаем src
+    if (url.includes('<iframe')) {
+      const srcMatch = url.match(/src="([^"]+)"/);
+      if (srcMatch) {
+        return srcMatch[1];
+      }
+    }
+    
+    // Если это уже готовая embed ссылка
+    if (url.includes('google.com/maps/embed')) {
+      return url;
+    }
+    
+    // Если это обычная ссылка Google Maps, конвертируем в embed
+    if (url.includes('google.com/maps') || url.includes('maps.google.com')) {
+      return url.replace('google.com/maps', 'google.com/maps/embed');
+    }
+    
+    // Если это короткая ссылка goo.gl или maps.app.goo.gl
+    if (url.includes('goo.gl') || url.includes('maps.app.goo.gl')) {
+      // Для коротких ссылок возвращаем как есть - браузер сам перенаправит
+      return url;
+    }
+    
+    return url;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -951,11 +983,19 @@ const CabinForm: React.FC<{
       return;
     }
 
-    onSave(formData);
+    // Обрабатываем URL карты
+    const processedMapUrl = processMapUrl(formData.mapUrl);
+
+    const dataToSave = {
+      ...formData,
+      mapUrl: processedMapUrl
+    };
+
+    onSave(dataToSave);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -1042,17 +1082,17 @@ const CabinForm: React.FC<{
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ссылка на карту Google Maps
+                Карта Google Maps
               </label>
-              <input
-                type="url"
+              <textarea
                 value={formData.mapUrl}
                 onChange={(e) => setFormData({ ...formData, mapUrl: e.target.value })}
+                rows={3}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="https://maps.app.goo.gl/... или iframe src"
+                placeholder="Вставьте ссылку Google Maps или полный iframe код"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Вставьте ссылку Google Maps или iframe src для отображения карты
+                Можно вставить: ссылку Google Maps, iframe код целиком, или embed ссылку
               </p>
             </div>
 
