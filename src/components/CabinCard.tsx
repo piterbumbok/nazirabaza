@@ -35,10 +35,13 @@ const CabinCard: React.FC<CabinCardProps> = ({ cabin }) => {
             {cabin.name}
           </h3>
 
-          <div className="flex items-center text-gray-500 mb-4 text-sm">
-            <MapPin className="w-4 h-4 mr-2 text-blue-500" />
-            <span>{cabin.location}</span>
-          </div>
+          {/* Показываем локацию только если она заполнена */}
+          {cabin.location && cabin.location.trim() && (
+            <div className="flex items-center text-gray-500 mb-4 text-sm">
+              <MapPin className="w-4 h-4 mr-2 text-blue-500" />
+              <span>{cabin.location}</span>
+            </div>
+          )}
 
           <p className="text-gray-600 mb-6 text-sm line-clamp-3 leading-relaxed flex-grow">
             {cabin.description}
