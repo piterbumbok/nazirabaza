@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Hero from '../components/Hero';
 import FeaturedCabins from '../components/FeaturedCabins';
@@ -6,15 +6,36 @@ import PhotoGallery from '../components/PhotoGallery';
 import WhyChooseUs from '../components/WhyChooseUs';
 import Testimonials from '../components/Testimonials';
 import Footer from '../components/Footer';
+import { apiService } from '../services/api';
 
 const HomePage: React.FC = () => {
-  const galleryImages = [
+  const [galleryImages, setGalleryImages] = useState([
     'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg',
     'https://images.pexels.com/photos/4846293/pexels-photo-4846293.jpeg',
     'https://images.pexels.com/photos/4846265/pexels-photo-4846265.jpeg',
     'https://images.pexels.com/photos/4846437/pexels-photo-4846437.jpeg',
     'https://images.pexels.com/photos/4846436/pexels-photo-4846436.jpeg'
-  ];
+  ]);
+
+  const [phone, setPhone] = useState('+7 965 411-15-55');
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await apiService.getSettings();
+        if (settings.galleryImages && Array.isArray(settings.galleryImages)) {
+          setGalleryImages(settings.galleryImages);
+        }
+        if (settings.phone) {
+          setPhone(settings.phone);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    };
+
+    loadSettings();
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -33,7 +54,7 @@ const HomePage: React.FC = () => {
         <div className="absolute inset-0 bg-black/10"></div>
       </div>
       
-      <Header phone="+7 965 411-15-55" />
+      <Header phone={phone} />
       
       {/* Hero Section */}
       <section className="relative pt-20 pb-16 overflow-hidden">
