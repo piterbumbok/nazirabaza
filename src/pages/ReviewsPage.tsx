@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { Star, Send } from 'lucide-react';
+import SimpleCaptcha from '../components/SimpleCaptcha';
+import { Star, Send, Shield } from 'lucide-react';
 import { apiService } from '../services/api';
 
 const ReviewsPage: React.FC = () => {
@@ -13,6 +14,7 @@ const ReviewsPage: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [captchaVerified, setCaptchaVerified] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,12 +24,18 @@ const ReviewsPage: React.FC = () => {
       return;
     }
 
+    if (!captchaVerified) {
+      alert('Пожалуйста, подтвердите, что вы не робот');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       await apiService.createReview(formData);
       setSubmitted(true);
       setFormData({ name: '', email: '', rating: 5, comment: '' });
+      setCaptchaVerified(false);
     } catch (error) {
       console.error('Error submitting review:', error);
       alert('Ошибка при отправке отзыва. Попробуйте еще раз.');
@@ -45,6 +53,10 @@ const ReviewsPage: React.FC = () => {
 
   const handleRatingChange = (rating: number) => {
     setFormData({ ...formData, rating });
+  };
+
+  const handleCaptchaVerify = (isValid: boolean) => {
+    setCaptchaVerified(isValid);
   };
 
   if (submitted) {
@@ -93,7 +105,10 @@ const ReviewsPage: React.FC = () => {
           <div className="container mx-auto px-4">
             <div className="max-w-2xl mx-auto">
               <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Ваш отзыв</h2>
+                <div className="flex items-center justify-center mb-8">
+                  <Shield className="w-6 h-6 text-blue-600 mr-2" />
+                  <h2 className="text-2xl font-bold text-gray-900">Ваш отзыв</h2>
+                </div>
                 
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -173,20 +188,40 @@ const ReviewsPage: React.FC = () => {
                     />
                   </div>
 
+                  {/* Капча */}
+                  <SimpleCaptcha 
+                    onVerify={handleCaptchaVerify}
+                    className="bg-gray-50 p-4 rounded-lg border"
+                  />
+
                   <button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    disabled={isSubmitting || !captchaVerified}
+                    className={`w-full font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center ${
+                      captchaVerified && !isSubmitting
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
                   >
                     {isSubmitting ? (
                       'Отправка...'
                     ) : (
                       <>
                         <Send className="w-5 h-5 mr-2" />
-                        Отправить отзыв
+                        {captchaVerified ? 'Отправить отзыв' : 'Подтвердите капчу'}
                       </>
                     )}
                   </button>
+                </div>
+
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-start">
+                    <Shield className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-blue-800">
+                      <p className="font-medium mb-1">Защита от спама</p>
+                      <p>Мы используем капчу для защиты от автоматических отзывов. Все отзывы проходят модерацию перед публикацией.</p>
+                    </div>
+                  </div>
                 </div>
 
                 <p className="text-sm text-gray-500 mt-4 text-center">
