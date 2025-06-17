@@ -41,7 +41,7 @@ const CabinDetailPage: React.FC = () => {
     );
   }
 
-  // Получаем расстояние до моря и карту из данных домика или используем значения по умолчанию
+  // Получаем расстояние до моря и карту из данных домика
   const distanceToSea = (cabin as any).distanceToSea;
   const mapUrl = (cabin as any).mapUrl || '';
 

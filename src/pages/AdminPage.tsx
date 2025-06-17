@@ -446,7 +446,7 @@ const AdminPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <p className="text-gray-600 text-sm mb-4">{truncateText(cabin.description, 150)}</p>
+                        <p className="text-gray-600 text-sm mb-4 break-words">{truncateText(cabin.description, 150)}</p>
                         
                         {cabin.images.length > 0 && (
                           <div className="flex space-x-2 mb-4">
@@ -872,7 +872,7 @@ const AdminPage: React.FC = () => {
                         </span>
                       </div>
                       
-                      <p className="text-gray-600 text-sm mb-4">
+                      <p className="text-gray-600 text-sm mb-4 break-words">
                         {truncateText(review.comment, 200)}
                         {review.comment.length > 200 && (
                           <button

@@ -65,9 +65,9 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ review, isOpen, onClose }) =>
               </div>
             </div>
 
-            {/* Comment */}
+            {/* Comment with proper text wrapping */}
             <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
                 {review.comment}
               </p>
             </div>
