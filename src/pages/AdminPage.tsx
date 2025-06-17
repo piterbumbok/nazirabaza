@@ -446,7 +446,7 @@ const AdminPage: React.FC = () => {
                           </div>
                         </div>
 
-                        <p className="text-gray-600 text-sm mb-4 break-words">{truncateText(cabin.description, 150)}</p>
+                        <p className="text-gray-600 text-sm mb-4 break-words whitespace-pre-wrap">{truncateText(cabin.description, 150)}</p>
                         
                         {cabin.images.length > 0 && (
                           <div className="flex space-x-2 mb-4">
@@ -872,17 +872,19 @@ const AdminPage: React.FC = () => {
                         </span>
                       </div>
                       
-                      <p className="text-gray-600 text-sm mb-4 break-words">
-                        {truncateText(review.comment, 200)}
-                        {review.comment.length > 200 && (
-                          <button
-                            onClick={() => setSelectedReview(review)}
-                            className="text-blue-600 hover:text-blue-700 ml-2"
-                          >
-                            Читать полностью
-                          </button>
-                        )}
-                      </p>
+                      <div className="mb-4">
+                        <p className="text-gray-600 text-sm break-words whitespace-pre-wrap">
+                          {truncateText(review.comment, 200)}
+                          {review.comment.length > 200 && (
+                            <button
+                              onClick={() => setSelectedReview(review)}
+                              className="text-blue-600 hover:text-blue-700 ml-2"
+                            >
+                              Читать полностью
+                            </button>
+                          )}
+                        </p>
+                      </div>
                       
                       <div className="text-xs text-gray-500">
                         {review.email} • {new Date(review.created_at).toLocaleDateString('ru-RU')}
@@ -959,6 +961,37 @@ const AdminPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Главная страница */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Главная страница</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Заголовок Hero секции
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.heroTitle || ''}
+                    onChange={(e) => setSettings({ ...settings, heroTitle: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Уютные домики и квартиры на берегу каспия"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Подзаголовок Hero секции
+                  </label>
+                  <textarea
+                    value={settings.heroSubtitle || ''}
+                    onChange={(e) => setSettings({ ...settings, heroSubtitle: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Отдохните от городской суеты в наших комфортабельных объектах с живописным видом на Каспийское море"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Секция "Почему выбирают нас" */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Секция "Почему выбирают нас"</h3>
@@ -985,6 +1018,92 @@ const AdminPage: React.FC = () => {
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Мы создаем идеальные условия для вашего отдыха на Каспийском море, уделяя внимание каждой детали."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Контакты */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Контактная информация</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={settings.footerEmail || ''}
+                    onChange={(e) => setSettings({ ...settings, footerEmail: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="info@vgosti.ru"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Телефон в футере
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.footerPhone || ''}
+                    onChange={(e) => setSettings({ ...settings, footerPhone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="+7 965 411-15-55"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Адрес
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.footerAddress || ''}
+                    onChange={(e) => setSettings({ ...settings, footerAddress: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Приморский бульвар, 123, Морской город, Россия"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Описание в футере
+                  </label>
+                  <textarea
+                    value={settings.footerDescription || ''}
+                    onChange={(e) => setSettings({ ...settings, footerDescription: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Уютные домики и современные квартиры на берегу моря для незабываемого отдыха."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Правила проживания */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Правила проживания</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Время заезда/выезда
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.checkInOut || ''}
+                    onChange={(e) => setSettings({ ...settings, checkInOut: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Заезд после 14:00, выезд до 12:00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Дополнительные правила (по одному в строке)
+                  </label>
+                  <textarea
+                    value={settings.accommodationRules || ''}
+                    onChange={(e) => setSettings({ ...settings, accommodationRules: e.target.value })}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Курение запрещено&#10;Без вечеринок и мероприятий&#10;Разрешено проживание с домашними животными"
                   />
                 </div>
               </div>
