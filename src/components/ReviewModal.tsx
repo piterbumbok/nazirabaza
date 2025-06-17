@@ -28,6 +28,8 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ review, isOpen, onClose }) =>
       document.addEventListener('keydown', handleEscape);
       // Блокируем скролл страницы
       document.body.style.overflow = 'hidden';
+      // Прокручиваем к началу страницы
+      window.scrollTo(0, 0);
     }
 
     return () => {
@@ -41,7 +43,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ review, isOpen, onClose }) =>
 
   return (
     <div 
-      className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4"
       style={{ 
         position: 'fixed',
         top: 0,
@@ -53,10 +55,11 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ review, isOpen, onClose }) =>
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transform transition-all duration-300 scale-100"
+        className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl transform transition-all duration-300 scale-100 mx-auto my-auto"
         style={{
           position: 'relative',
-          margin: 'auto'
+          top: '50%',
+          transform: 'translateY(-50%)'
         }}
         onClick={(e) => e.stopPropagation()}
       >

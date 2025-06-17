@@ -41,9 +41,37 @@ const CabinDetailPage: React.FC = () => {
     );
   }
 
-  // Получаем расстояние до моря и карту из данных домика
-  const distanceToSea = (cabin as any).distanceToSea;
-  const mapUrl = (cabin as any).mapUrl || '';
+  // Получаем дополнительные данные из cabin (они могут быть добавлены через API)
+  const cabinData = cabin as any;
+  const distanceToSea = cabinData.distanceToSea;
+  const mapUrl = cabinData.mapUrl || '';
+
+  // Функция для конвертации Google Maps ссылки в embed
+  const convertGoogleMapsUrl = (url: string): string => {
+    if (!url) return '';
+    
+    // Если это уже iframe src, возвращаем как есть
+    if (url.includes('google.com/maps/embed')) {
+      return url;
+    }
+    
+    // Если это ссылка типа https://maps.app.goo.gl/...
+    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl')) {
+      // Для коротких ссылок Google Maps нужно использовать iframe с базовым URL
+      const shortId = url.split('/').pop();
+      return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3000!2d0!3d0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMDDCsDAwJzAwLjAiTiAwMMKwMDAnMDAuMCJF!5e0!3m2!1sen!2s!4v1234567890123!5m2!1sen!2s`;
+    }
+    
+    // Если это обычная ссылка Google Maps
+    if (url.includes('google.com/maps') || url.includes('maps.google.com')) {
+      // Извлекаем координаты или place_id из URL и создаем embed ссылку
+      return url.replace('google.com/maps', 'google.com/maps/embed');
+    }
+    
+    return url;
+  };
+
+  const embedMapUrl = convertGoogleMapsUrl(mapUrl);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -120,10 +148,10 @@ const CabinDetailPage: React.FC = () => {
                 </p>
                 
                 {/* Карта */}
-                {mapUrl ? (
-                  <div className="h-64 rounded-xl overflow-hidden">
+                {embedMapUrl ? (
+                  <div className="h-96 rounded-xl overflow-hidden border">
                     <iframe
-                      src={mapUrl}
+                      src={embedMapUrl}
                       width="100%"
                       height="100%"
                       style={{ border: 0 }}

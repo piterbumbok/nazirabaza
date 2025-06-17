@@ -74,7 +74,7 @@ async function initDatabase() {
     console.log('🔧 Initializing database...');
     
     db.serialize(() => {
-      // Create cabins table
+      // Create cabins table with additional fields
       db.run(`
         CREATE TABLE IF NOT EXISTS cabins (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,6 +89,8 @@ async function initDatabase() {
           images TEXT,
           featured BOOLEAN DEFAULT 0,
           active BOOLEAN DEFAULT 1,
+          distance_to_sea TEXT,
+          map_url TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `, (err) => {
@@ -148,6 +150,15 @@ async function initDatabase() {
       `, (err) => {
         if (err) console.error('Error creating reviews table:', err);
         else console.log('✅ Reviews table ready');
+      });
+
+      // Add new columns to existing cabins table if they don't exist
+      db.run(`ALTER TABLE cabins ADD COLUMN distance_to_sea TEXT`, (err) => {
+        // Ignore error if column already exists
+      });
+      
+      db.run(`ALTER TABLE cabins ADD COLUMN map_url TEXT`, (err) => {
+        // Ignore error if column already exists
       });
 
       // Insert default admin credentials if not exists
@@ -215,7 +226,9 @@ async function initDatabase() {
                 'https://images.pexels.com/photos/1329711/pexels-photo-1329711.jpeg'
               ]),
               featured: 1,
-              active: 1
+              active: 1,
+              distance_to_sea: '5 мин',
+              map_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3749.3569462438895!2d47.7007235!3d42.8628265!3m2!1i1024!2i768!4f13.1!5e1!3m2!1sru!2suk!4v1750187107268!5m2!1sru!2suk'
             },
             {
               name: 'Семейный причал',
@@ -232,14 +245,16 @@ async function initDatabase() {
                 'https://images.pexels.com/photos/4450337/pexels-photo-4450337.jpeg'
               ]),
               featured: 1,
-              active: 1
+              active: 1,
+              distance_to_sea: '3 мин',
+              map_url: ''
             }
           ];
 
           defaultCabins.forEach((cabin, index) => {
             db.run(`
-              INSERT INTO cabins (name, description, price_per_night, location, bedrooms, bathrooms, max_guests, amenities, images, featured, active)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO cabins (name, description, price_per_night, location, bedrooms, bathrooms, max_guests, amenities, images, featured, active, distance_to_sea, map_url)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
               cabin.name,
               cabin.description,
@@ -251,7 +266,9 @@ async function initDatabase() {
               cabin.amenities,
               cabin.images,
               cabin.featured,
-              cabin.active
+              cabin.active,
+              cabin.distance_to_sea,
+              cabin.map_url
             ], (err) => {
               if (err) console.error(`Error adding cabin ${index + 1}:`, err);
               else console.log(`✅ Added cabin: ${cabin.name}`);
@@ -301,7 +318,9 @@ app.get('/api/cabins', (req, res) => {
       amenities: row.amenities ? JSON.parse(row.amenities) : [],
       images: row.images ? JSON.parse(row.images) : [],
       featured: Boolean(row.featured),
-      active: Boolean(row.active)
+      active: Boolean(row.active),
+      distanceToSea: row.distance_to_sea,
+      mapUrl: row.map_url
     }));
     
     console.log(`✅ Returned ${cabins.length} active cabins`);
@@ -330,7 +349,9 @@ app.get('/api/admin/cabins', (req, res) => {
       amenities: row.amenities ? JSON.parse(row.amenities) : [],
       images: row.images ? JSON.parse(row.images) : [],
       featured: Boolean(row.featured),
-      active: Boolean(row.active)
+      active: Boolean(row.active),
+      distanceToSea: row.distance_to_sea,
+      mapUrl: row.map_url
     }));
     
     console.log(`✅ Returned ${cabins.length} cabins for admin`);
@@ -366,7 +387,9 @@ app.get('/api/cabins/:id', (req, res) => {
       amenities: row.amenities ? JSON.parse(row.amenities) : [],
       images: row.images ? JSON.parse(row.images) : [],
       featured: Boolean(row.featured),
-      active: Boolean(row.active)
+      active: Boolean(row.active),
+      distanceToSea: row.distance_to_sea,
+      mapUrl: row.map_url
     };
     
     console.log(`✅ Returned cabin: ${cabin.name}`);
@@ -388,12 +411,14 @@ app.post('/api/cabins', (req, res) => {
     amenities,
     images,
     featured,
-    active = true
+    active = true,
+    distanceToSea,
+    mapUrl
   } = req.body;
 
   db.run(`
-    INSERT INTO cabins (name, description, price_per_night, location, bedrooms, bathrooms, max_guests, amenities, images, featured, active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO cabins (name, description, price_per_night, location, bedrooms, bathrooms, max_guests, amenities, images, featured, active, distance_to_sea, map_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     name,
     description,
@@ -405,7 +430,9 @@ app.post('/api/cabins', (req, res) => {
     JSON.stringify(amenities),
     JSON.stringify(images),
     featured ? 1 : 0,
-    active ? 1 : 0
+    active ? 1 : 0,
+    distanceToSea,
+    mapUrl
   ], function(err) {
     if (err) {
       console.error('Error creating cabin:', err);
@@ -431,7 +458,9 @@ app.post('/api/cabins', (req, res) => {
         amenities: row.amenities ? JSON.parse(row.amenities) : [],
         images: row.images ? JSON.parse(row.images) : [],
         featured: Boolean(row.featured),
-        active: Boolean(row.active)
+        active: Boolean(row.active),
+        distanceToSea: row.distance_to_sea,
+        mapUrl: row.map_url
       };
 
       console.log(`✅ Created cabin: ${cabin.name}`);
@@ -456,14 +485,16 @@ app.put('/api/cabins/:id', (req, res) => {
     amenities,
     images,
     featured,
-    active = true
+    active = true,
+    distanceToSea,
+    mapUrl
   } = req.body;
 
   db.run(`
     UPDATE cabins 
     SET name = ?, description = ?, price_per_night = ?, location = ?, 
         bedrooms = ?, bathrooms = ?, max_guests = ?, amenities = ?, 
-        images = ?, featured = ?, active = ?
+        images = ?, featured = ?, active = ?, distance_to_sea = ?, map_url = ?
     WHERE id = ?
   `, [
     name,
@@ -477,6 +508,8 @@ app.put('/api/cabins/:id', (req, res) => {
     JSON.stringify(images),
     featured ? 1 : 0,
     active ? 1 : 0,
+    distanceToSea,
+    mapUrl,
     id
   ], function(err) {
     if (err) {
@@ -508,7 +541,9 @@ app.put('/api/cabins/:id', (req, res) => {
         amenities: row.amenities ? JSON.parse(row.amenities) : [],
         images: row.images ? JSON.parse(row.images) : [],
         featured: Boolean(row.featured),
-        active: Boolean(row.active)
+        active: Boolean(row.active),
+        distanceToSea: row.distance_to_sea,
+        mapUrl: row.map_url
       };
 
       console.log(`✅ Updated cabin: ${cabin.name}`);
