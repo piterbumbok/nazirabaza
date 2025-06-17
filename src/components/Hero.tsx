@@ -1,6 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Hero: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleFindAccommodation = () => {
+    navigate('/cabins');
+  };
+
   return (
     <div className="container mx-auto px-4 py-16 text-center">
       <div className="max-w-5xl mx-auto">
@@ -11,7 +18,10 @@ const Hero: React.FC = () => {
           Отдохните от городской суеты в наших комфортабельных объектах с живописным видом на Каспийское море
         </p>
         <div className="flex justify-center">
-          <button className="px-10 py-4 bg-white text-blue-700 font-semibold rounded-xl hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105">
+          <button 
+            onClick={handleFindAccommodation}
+            className="px-10 py-4 bg-white text-blue-700 font-semibold rounded-xl hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105"
+          >
             Найти жилье
           </button>
         </div>

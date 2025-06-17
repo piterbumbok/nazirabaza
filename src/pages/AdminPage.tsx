@@ -6,7 +6,7 @@ import FileUpload from '../components/FileUpload';
 import { useCabins } from '../hooks/useCabins';
 import { apiService } from '../services/api';
 import { Cabin } from '../types';
-import { X, Plus, Edit, Trash, Settings, Phone, Mail, MapPin, Image, Key, Save, Globe, FileText } from 'lucide-react';
+import { X, Plus, Edit, Trash, Settings, Phone, Mail, MapPin, Image, Key, Save, Globe, FileText, Users, Info } from 'lucide-react';
 
 interface SiteSettings {
   siteName: string;
@@ -21,6 +21,8 @@ interface SiteSettings {
   footerEmail: string;
   footerAddress: string;
   accommodationRules: string[];
+  aboutContent: any;
+  contactInfo: any;
 }
 
 interface WhyChooseUsFeature {
@@ -35,11 +37,12 @@ interface AdminCredentials {
 
 const AdminPage: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'cabins' | 'settings' | 'gallery' | 'credentials' | 'content'>('cabins');
+  const [activeTab, setActiveTab] = useState<'cabins' | 'about' | 'contacts' | 'settings' | 'gallery' | 'credentials' | 'content'>('cabins');
   const { cabins, loading, addCabin, updateCabin, deleteCabin } = useCabins();
   const [isAddingCabin, setIsAddingCabin] = useState(false);
   const [editingCabin, setEditingCabin] = useState<Cabin | null>(null);
   const [saving, setSaving] = useState(false);
+  const [customAdminPath, setCustomAdminPath] = useState('admin');
   
   const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>({
     username: 'admin',
@@ -69,7 +72,29 @@ const AdminPage: React.FC = () => {
       'Курение запрещено',
       'Без вечеринок и мероприятий',
       'Разрешено проживание с домашними животными'
-    ]
+    ],
+    aboutContent: {
+      title: 'О нас',
+      subtitle: 'Ваш идеальный отдых на берегу Каспийского моря',
+      description: 'Мы предлагаем уникальные возможности для отдыха в живописных местах на побережье Каспийского моря.',
+      mission: 'Наша миссия - создавать незабываемые впечатления для наших гостей.',
+      vision: 'Мы стремимся стать ведущей компанией в сфере краткосрочной аренды жилья.',
+      values: ['Качество и комфорт', 'Индивидуальный подход', 'Честность и прозрачность', 'Забота об окружающей среде'],
+      stats: { yearsExperience: 5, happyGuests: 1200, properties: 15, locations: 3 },
+      team: [
+        { name: 'Анна Петрова', position: 'Основатель и директор', description: 'Более 10 лет опыта в сфере гостеприимства', image: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg' }
+      ]
+    },
+    contactInfo: {
+      title: 'Контакты',
+      subtitle: 'Свяжитесь с нами любым удобным способом',
+      phone: '+7 965 411-15-55',
+      email: 'info@vgosti.ru',
+      address: 'Приморский бульвар, 123, Морской город, Россия',
+      whatsapp: '+79654111555',
+      telegram: '@vgosti_support',
+      officeHours: { weekdays: 'Пн-Пт: 9:00 - 18:00', weekends: 'Сб-Вс: 10:00 - 16:00' }
+    }
   });
 
   const [whyChooseUsFeatures, setWhyChooseUsFeatures] = useState<WhyChooseUsFeature[]>([
@@ -107,6 +132,24 @@ const AdminPage: React.FC = () => {
   const [newAmenity, setNewAmenity] = useState('');
   const [newRule, setNewRule] = useState('');
 
+  // Check if current path matches admin path
+  useEffect(() => {
+    const currentPath = window.location.pathname.slice(1); // Remove leading slash
+    if (currentPath && currentPath !== 'admin') {
+      setCustomAdminPath(currentPath);
+    }
+  }, []);
+
+  // Auto-logout on page refresh
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      setIsAuthenticated(false);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   // Load settings on component mount
   useEffect(() => {
     const loadSettings = async () => {
@@ -114,6 +157,9 @@ const AdminPage: React.FC = () => {
         const settings = await apiService.getSettings();
         if (Object.keys(settings).length > 0) {
           setSiteSettings(prev => ({ ...prev, ...settings }));
+          if (settings.customAdminPath) {
+            setCustomAdminPath(settings.customAdminPath);
+          }
         }
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -251,7 +297,15 @@ const AdminPage: React.FC = () => {
     try {
       setSaving(true);
       await apiService.updateCredentials(adminCredentials.username, adminCredentials.password);
-      alert('Учетные данные сохранены! Войдите заново с новыми данными.');
+      
+      // Save custom admin path
+      const settingsToSave = {
+        ...siteSettings,
+        customAdminPath
+      };
+      await apiService.updateSettings(settingsToSave);
+      
+      alert('Учетные данные и путь админки сохранены! Войдите заново с новыми данными.');
       setIsAuthenticated(false);
     } catch (error) {
       console.error('Error saving credentials:', error);
@@ -266,7 +320,8 @@ const AdminPage: React.FC = () => {
       setSaving(true);
       const settingsToSave = {
         ...siteSettings,
-        whyChooseUsFeatures
+        whyChooseUsFeatures,
+        customAdminPath
       };
       await apiService.updateSettings(settingsToSave);
       alert('Настройки сохранены!');
@@ -333,10 +388,12 @@ const AdminPage: React.FC = () => {
           {/* Tabs */}
           <div className="bg-white rounded-lg shadow-md mb-8">
             <div className="border-b border-gray-200">
-              <nav className="flex space-x-8 px-6">
+              <nav className="flex space-x-8 px-6 overflow-x-auto">
                 {[
                   { id: 'cabins', label: 'Домики', icon: <Settings className="w-5 h-5" /> },
                   { id: 'content', label: 'Контент сайта', icon: <Globe className="w-5 h-5" /> },
+                  { id: 'about', label: 'О нас', icon: <Info className="w-5 h-5" /> },
+                  { id: 'contacts', label: 'Контакты', icon: <Users className="w-5 h-5" /> },
                   { id: 'settings', label: 'Настройки', icon: <Phone className="w-5 h-5" /> },
                   { id: 'gallery', label: 'Галерея', icon: <Image className="w-5 h-5" /> },
                   { id: 'credentials', label: 'Безопасность', icon: <Key className="w-5 h-5" /> }
@@ -344,7 +401,7 @@ const AdminPage: React.FC = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+                    className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                       activeTab === tab.id
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -450,6 +507,313 @@ const AdminPage: React.FC = () => {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* About Tab */}
+          {activeTab === 'about' && (
+            <div className="space-y-8">
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Страница "О нас"</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Заголовок</label>
+                    <input
+                      type="text"
+                      value={siteSettings.aboutContent.title}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        aboutContent: { ...siteSettings.aboutContent, title: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Подзаголовок</label>
+                    <input
+                      type="text"
+                      value={siteSettings.aboutContent.subtitle}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        aboutContent: { ...siteSettings.aboutContent, subtitle: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-gray-700 text-sm font-bold mb-2">Описание</label>
+                  <textarea
+                    value={siteSettings.aboutContent.description}
+                    onChange={(e) => setSiteSettings({
+                      ...siteSettings,
+                      aboutContent: { ...siteSettings.aboutContent, description: e.target.value }
+                    })}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Миссия</label>
+                    <textarea
+                      value={siteSettings.aboutContent.mission}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        aboutContent: { ...siteSettings.aboutContent, mission: e.target.value }
+                      })}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Видение</label>
+                    <textarea
+                      value={siteSettings.aboutContent.vision}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        aboutContent: { ...siteSettings.aboutContent, vision: e.target.value }
+                      })}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Statistics */}
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Статистика</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-gray-700 text-sm font-bold mb-2">Лет опыта</label>
+                      <input
+                        type="number"
+                        value={siteSettings.aboutContent.stats.yearsExperience}
+                        onChange={(e) => setSiteSettings({
+                          ...siteSettings,
+                          aboutContent: {
+                            ...siteSettings.aboutContent,
+                            stats: { ...siteSettings.aboutContent.stats, yearsExperience: Number(e.target.value) }
+                          }
+                        })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 text-sm font-bold mb-2">Довольных гостей</label>
+                      <input
+                        type="number"
+                        value={siteSettings.aboutContent.stats.happyGuests}
+                        onChange={(e) => setSiteSettings({
+                          ...siteSettings,
+                          aboutContent: {
+                            ...siteSettings.aboutContent,
+                            stats: { ...siteSettings.aboutContent.stats, happyGuests: Number(e.target.value) }
+                          }
+                        })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 text-sm font-bold mb-2">Объектов</label>
+                      <input
+                        type="number"
+                        value={siteSettings.aboutContent.stats.properties}
+                        onChange={(e) => setSiteSettings({
+                          ...siteSettings,
+                          aboutContent: {
+                            ...siteSettings.aboutContent,
+                            stats: { ...siteSettings.aboutContent.stats, properties: Number(e.target.value) }
+                          }
+                        })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 text-sm font-bold mb-2">Локаций</label>
+                      <input
+                        type="number"
+                        value={siteSettings.aboutContent.stats.locations}
+                        onChange={(e) => setSiteSettings({
+                          ...siteSettings,
+                          aboutContent: {
+                            ...siteSettings.aboutContent,
+                            stats: { ...siteSettings.aboutContent.stats, locations: Number(e.target.value) }
+                          }
+                        })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <button 
+                  onClick={handleSaveSettings}
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center mx-auto disabled:opacity-50"
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  {saving ? 'Сохранение...' : 'Сохранить изменения'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Contacts Tab */}
+          {activeTab === 'contacts' && (
+            <div className="space-y-8">
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Страница "Контакты"</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Заголовок</label>
+                    <input
+                      type="text"
+                      value={siteSettings.contactInfo.title}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        contactInfo: { ...siteSettings.contactInfo, title: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Подзаголовок</label>
+                    <input
+                      type="text"
+                      value={siteSettings.contactInfo.subtitle}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        contactInfo: { ...siteSettings.contactInfo, subtitle: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Телефон</label>
+                    <input
+                      type="text"
+                      value={siteSettings.contactInfo.phone}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        contactInfo: { ...siteSettings.contactInfo, phone: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={siteSettings.contactInfo.email}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        contactInfo: { ...siteSettings.contactInfo, email: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">WhatsApp</label>
+                    <input
+                      type="text"
+                      value={siteSettings.contactInfo.whatsapp}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        contactInfo: { ...siteSettings.contactInfo, whatsapp: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Telegram</label>
+                    <input
+                      type="text"
+                      value={siteSettings.contactInfo.telegram}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        contactInfo: { ...siteSettings.contactInfo, telegram: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-gray-700 text-sm font-bold mb-2">Адрес</label>
+                  <textarea
+                    value={siteSettings.contactInfo.address}
+                    onChange={(e) => setSiteSettings({
+                      ...siteSettings,
+                      contactInfo: { ...siteSettings.contactInfo, address: e.target.value }
+                    })}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Часы работы (будни)</label>
+                    <input
+                      type="text"
+                      value={siteSettings.contactInfo.officeHours.weekdays}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        contactInfo: {
+                          ...siteSettings.contactInfo,
+                          officeHours: { ...siteSettings.contactInfo.officeHours, weekdays: e.target.value }
+                        }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Часы работы (выходные)</label>
+                    <input
+                      type="text"
+                      value={siteSettings.contactInfo.officeHours.weekends}
+                      onChange={(e) => setSiteSettings({
+                        ...siteSettings,
+                        contactInfo: {
+                          ...siteSettings.contactInfo,
+                          officeHours: { ...siteSettings.contactInfo.officeHours, weekends: e.target.value }
+                        }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <button 
+                  onClick={handleSaveSettings}
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center mx-auto disabled:opacity-50"
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  {saving ? 'Сохранение...' : 'Сохранить изменения'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -560,68 +924,6 @@ const AdminPage: React.FC = () => {
                         </button>
                       </div>
                     ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer Content */}
-              <div className="bg-white rounded-lg shadow-md p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Контакты в футере</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <div className="mb-6">
-                      <label className="block text-gray-700 text-sm font-bold mb-2">
-                        Описание компании
-                      </label>
-                      <textarea
-                        value={siteSettings.footerDescription}
-                        onChange={(e) => setSiteSettings({ ...siteSettings, footerDescription: e.target.value })}
-                        rows={4}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="mb-6">
-                      <label className="block text-gray-700 text-sm font-bold mb-2">
-                        <Phone className="w-4 h-4 inline mr-1" />
-                        Телефон в футере
-                      </label>
-                      <input
-                        type="text"
-                        value={siteSettings.footerPhone}
-                        onChange={(e) => setSiteSettings({ ...siteSettings, footerPhone: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div className="mb-6">
-                      <label className="block text-gray-700 text-sm font-bold mb-2">
-                        <Mail className="w-4 h-4 inline mr-1" />
-                        Email в футере
-                      </label>
-                      <input
-                        type="email"
-                        value={siteSettings.footerEmail}
-                        onChange={(e) => setSiteSettings({ ...siteSettings, footerEmail: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div className="mb-6">
-                      <label className="block text-gray-700 text-sm font-bold mb-2">
-                        <MapPin className="w-4 h-4 inline mr-1" />
-                        Адрес в футере
-                      </label>
-                      <textarea
-                        value={siteSettings.footerAddress}
-                        onChange={(e) => setSiteSettings({ ...siteSettings, footerAddress: e.target.value })}
-                        rows={3}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
@@ -745,6 +1047,17 @@ const AdminPage: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <button 
+                  onClick={handleSaveSettings}
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center disabled:opacity-50"
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  {saving ? 'Сохранение...' : 'Сохранить галерею'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -778,6 +1091,22 @@ const AdminPage: React.FC = () => {
                   />
                 </div>
 
+                <div className="mb-6">
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Путь к админке (без слэшей)
+                  </label>
+                  <input
+                    type="text"
+                    value={customAdminPath}
+                    onChange={(e) => setCustomAdminPath(e.target.value)}
+                    placeholder="Например: JHKGVbj23jhgv"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-sm text-gray-600 mt-2">
+                    Текущий путь: <strong>https://vgosty05.ru/{customAdminPath}</strong>
+                  </p>
+                </div>
+
                 <button
                   onClick={handleSaveCredentials}
                   disabled={saving}
@@ -789,7 +1118,7 @@ const AdminPage: React.FC = () => {
 
                 <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800">
-                    <strong>Важно:</strong> После изменения учетных данных вам потребуется войти заново с новыми данными.
+                    <strong>Важно:</strong> После изменения учетных данных или пути админки вам потребуется войти заново с новыми данными по новому адресу.
                   </p>
                 </div>
               </div>
