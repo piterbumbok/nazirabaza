@@ -6,7 +6,7 @@ const Footer: React.FC = () => {
   const [footerContent, setFooterContent] = useState({
     siteName: 'В гости',
     footerDescription: 'Уютные домики и современные квартиры на берегу моря для незабываемого отдыха. Идеальное место для спокойного отдыха и наслаждения морским пейзажем.',
-    footerPhone: '+7 (999) 123-45-67',
+    footerPhone: '+7 965 411-15-55',
     footerEmail: 'info@vgosti.ru',
     footerAddress: 'Приморский бульвар, 123, Морской город, Россия'
   });
@@ -35,7 +35,7 @@ const Footer: React.FC = () => {
   return (
     <footer className="bg-gray-900 text-white py-16">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <div>
             <div className="flex items-center mb-6">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center mr-3">
@@ -58,21 +58,6 @@ const Footer: React.FC = () => {
                 </a>
               ))}
             </div>
-          </div>
-
-          <div>
-            <h3 className="text-xl font-semibold mb-6">Навигация</h3>
-            <ul className="space-y-3">
-              {['Главная', 'Каталог', 'Бронирование', 'Галерея', 'О нас', 'Контакты'].map(
-                (item) => (
-                  <li key={item}>
-                    <a href="#" className="text-gray-300 hover:text-white transition-colors duration-300 hover:translate-x-1 inline-block">
-                      {item}
-                    </a>
-                  </li>
-                )
-              )}
-            </ul>
           </div>
 
           <div>
