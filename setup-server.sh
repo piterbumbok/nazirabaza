@@ -13,7 +13,7 @@ apt update && apt upgrade -y
 
 # Устанавливаем необходимые пакеты
 echo "📦 Устанавливаем необходимые пакеты..."
-apt install -y curl wget git nginx ufw fail2ban
+apt install -y curl wget git nginx ufw fail2ban build-essential python3
 
 # Устанавливаем Node.js 18.x
 echo "📦 Устанавливаем Node.js..."

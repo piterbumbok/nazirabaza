@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'vgosti-server',
     script: 'server/index.js',
-    cwd: '/var/www/vgosty05/nazirabaza',
+    cwd: '/var/www/vgosty05',
     env: {
       NODE_ENV: 'production',
       PORT: 3001
