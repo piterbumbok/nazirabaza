@@ -38,26 +38,6 @@ interface SiteSettings {
     title: string;
     description: string;
   }>;
-  aboutContent?: {
-    title: string;
-    subtitle: string;
-    description: string;
-    mission: string;
-    vision: string;
-    values: string[];
-    stats: {
-      yearsExperience: number;
-      happyGuests: number;
-      properties: number;
-      locations: number;
-    };
-    team: Array<{
-      name: string;
-      position: string;
-      description: string;
-      image: string;
-    }>;
-  };
   contactInfo?: {
     title: string;
     subtitle: string;
@@ -81,6 +61,8 @@ const AdminPage: React.FC = () => {
   const [settings, setSettings] = useState<SiteSettings>({});
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [newCredentials, setNewCredentials] = useState({ username: '', password: '' });
+  const [adminPath, setAdminPath] = useState('admin');
+  const [newAdminPath, setNewAdminPath] = useState('');
   const [uploadingImages, setUploadingImages] = useState<string[]>([]);
 
   const { cabins, loading, addCabin, updateCabin, deleteCabin, fetchCabins } = useCabins();
@@ -100,6 +82,7 @@ const AdminPage: React.FC = () => {
 
   useEffect(() => {
     loadSettings();
+    loadAdminPath();
   }, []);
 
   const loadSettings = async () => {
@@ -108,6 +91,15 @@ const AdminPage: React.FC = () => {
       setSettings(settingsData);
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const loadAdminPath = async () => {
+    try {
+      const response = await apiService.getAdminPath();
+      setAdminPath(response.path);
+    } catch (error) {
+      console.error('Error loading admin path:', error);
     }
   };
 
@@ -147,28 +139,47 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const handleFileUpload = async (file: File, type: 'cabin' | 'gallery') => {
+  const handleUpdateAdminPath = async () => {
+    if (!newAdminPath.trim()) {
+      alert('Введите новую ссылку');
+      return;
+    }
+    
     try {
-      setUploadingImages(prev => [...prev, file.name]);
-      const response = await apiService.uploadImage(file);
+      await apiService.updateAdminPath(newAdminPath);
+      setAdminPath(newAdminPath);
+      alert(`Ссылка на админку изменена! Новая ссылка: /${newAdminPath}`);
+      setNewAdminPath('');
+    } catch (error) {
+      console.error('Error updating admin path:', error);
+      alert('Ошибка при обновлении ссылки');
+    }
+  };
+
+  const handleMultipleFileUpload = async (files: File[], type: 'cabin' | 'gallery') => {
+    try {
+      setUploadingImages(prev => [...prev, ...files.map(f => f.name)]);
+      
+      const uploadPromises = files.map(file => apiService.uploadImage(file));
+      const results = await Promise.all(uploadPromises);
       
       if (type === 'cabin') {
         setCabinForm(prev => ({
           ...prev,
-          images: [...prev.images.filter(img => img), response.imageUrl]
+          images: [...prev.images.filter(img => img), ...results.map(r => r.imageUrl)]
         }));
       } else if (type === 'gallery') {
         setSettings(prev => ({
           ...prev,
-          galleryImages: [...(prev.galleryImages || []), response.imageUrl]
+          galleryImages: [...(prev.galleryImages || []), ...results.map(r => r.imageUrl)]
         }));
       }
       
-      setUploadingImages(prev => prev.filter(name => name !== file.name));
+      setUploadingImages(prev => prev.filter(name => !files.map(f => f.name).includes(name)));
     } catch (error) {
-      console.error('Error uploading file:', error);
-      setUploadingImages(prev => prev.filter(name => name !== file.name));
-      alert('Ошибка при загрузке файла');
+      console.error('Error uploading files:', error);
+      setUploadingImages(prev => prev.filter(name => !files.map(f => f.name).includes(name)));
+      alert('Ошибка при загрузке файлов');
     }
   };
 
@@ -251,14 +262,17 @@ const AdminPage: React.FC = () => {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <Home className="w-8 h-8 text-blue-600 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">Админ панель</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Админ панель VGosti</h1>
             </div>
-            <button
-              onClick={() => setIsAuthenticated(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              Выйти
-            </button>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-500">Ссылка: /{adminPath}</span>
+              <button
+                onClick={() => setIsAuthenticated(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Выйти
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -268,7 +282,6 @@ const AdminPage: React.FC = () => {
           {[
             { id: 'cabins', label: 'Домики', icon: Home },
             { id: 'settings', label: 'Настройки сайта', icon: Settings },
-            { id: 'about', label: 'О нас', icon: FileText },
             { id: 'contacts', label: 'Контакты', icon: Phone },
             { id: 'admin', label: 'Админ', icon: User }
           ].map(({ id, label, icon: Icon }) => (
@@ -338,7 +351,7 @@ const AdminPage: React.FC = () => {
                     <textarea
                       value={cabinForm.description}
                       onChange={(e) => setCabinForm(prev => ({ ...prev, description: e.target.value }))}
-                      rows={4}
+                      rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -418,16 +431,19 @@ const AdminPage: React.FC = () => {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Изображения</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Изображения {uploadingImages.length > 0 && `(Загружается: ${uploadingImages.length})`}
+                    </label>
                     <FileUpload
-                      onFileSelect={(file) => handleFileUpload(file, 'cabin')}
+                      onFileSelect={(files) => handleMultipleFileUpload(files, 'cabin')}
                       accept="image/*"
+                      multiple={true}
                       className="mb-4"
                     />
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-4 gap-4">
                       {cabinForm.images.filter(img => img).map((image, index) => (
                         <div key={index} className="relative">
-                          <img src={image} alt={`Изображение ${index + 1}`} className="w-full h-24 object-cover rounded" />
+                          <img src={image} alt={`Изображение ${index + 1}`} className="w-full h-20 object-cover rounded" />
                           <button
                             onClick={() => {
                               const newImages = cabinForm.images.filter((_, i) => i !== index);
@@ -467,31 +483,31 @@ const AdminPage: React.FC = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {cabins.map((cabin) => (
                 <div key={cabin.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
                   <img
                     src={cabin.images[0] || '/placeholder.jpg'}
                     alt={cabin.name}
-                    className="w-full h-48 object-cover"
+                    className="w-full h-32 object-cover"
                   />
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg mb-2">{cabin.name}</h3>
-                    <p className="text-gray-600 text-sm mb-2">{cabin.location}</p>
-                    <p className="text-blue-600 font-bold mb-4">{formatPrice(cabin.pricePerNight)} / ночь</p>
+                  <div className="p-3">
+                    <h3 className="font-semibold text-sm mb-1 truncate">{cabin.name}</h3>
+                    <p className="text-gray-600 text-xs mb-1 truncate">{cabin.location}</p>
+                    <p className="text-blue-600 font-bold text-sm mb-2">{formatPrice(cabin.pricePerNight)}</p>
                     <div className="flex justify-between">
                       <button
                         onClick={() => startEditCabin(cabin)}
-                        className="flex items-center px-3 py-1 text-blue-600 hover:text-blue-800"
+                        className="flex items-center px-2 py-1 text-xs text-blue-600 hover:text-blue-800"
                       >
-                        <Edit className="w-4 h-4 mr-1" />
+                        <Edit className="w-3 h-3 mr-1" />
                         Изменить
                       </button>
                       <button
                         onClick={() => handleDeleteCabin(cabin.id)}
-                        className="flex items-center px-3 py-1 text-red-600 hover:text-red-800"
+                        className="flex items-center px-2 py-1 text-xs text-red-600 hover:text-red-800"
                       >
-                        <Trash2 className="w-4 h-4 mr-1" />
+                        <Trash2 className="w-3 h-3 mr-1" />
                         Удалить
                       </button>
                     </div>
@@ -508,14 +524,26 @@ const AdminPage: React.FC = () => {
             <h2 className="text-xl font-bold text-gray-900 mb-6">Настройки сайта</h2>
             
             <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Название сайта</label>
-                <input
-                  type="text"
-                  value={settings.siteName || ''}
-                  onChange={(e) => setSettings(prev => ({ ...prev, siteName: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Название сайта</label>
+                  <input
+                    type="text"
+                    value={settings.siteName || ''}
+                    onChange={(e) => setSettings(prev => ({ ...prev, siteName: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
+                  <input
+                    type="text"
+                    value={settings.phone || ''}
+                    onChange={(e) => setSettings(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
               <div>
@@ -539,26 +567,19 @@ const AdminPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
-                <input
-                  type="text"
-                  value={settings.phone || ''}
-                  onChange={(e) => setSettings(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Галерея изображений</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Галерея изображений {uploadingImages.length > 0 && `(Загружается: ${uploadingImages.length})`}
+                </label>
                 <FileUpload
-                  onFileSelect={(file) => handleFileUpload(file, 'gallery')}
+                  onFileSelect={(files) => handleMultipleFileUpload(files, 'gallery')}
                   accept="image/*"
+                  multiple={true}
                   className="mb-4"
                 />
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   {(settings.galleryImages || []).map((image, index) => (
                     <div key={index} className="relative">
-                      <img src={image} alt={`Галерея ${index + 1}`} className="w-full h-24 object-cover rounded" />
+                      <img src={image} alt={`Галерея ${index + 1}`} className="w-full h-20 object-cover rounded" />
                       <button
                         onClick={() => {
                           const newImages = (settings.galleryImages || []).filter((_, i) => i !== index);
@@ -584,121 +605,39 @@ const AdminPage: React.FC = () => {
           </div>
         )}
 
-        {/* About Tab */}
-        {activeTab === 'about' && (
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Настройки страницы "О нас"</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Заголовок</label>
-                <input
-                  type="text"
-                  value={settings.aboutContent?.title || ''}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    aboutContent: { ...prev.aboutContent, title: e.target.value }
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Подзаголовок</label>
-                <input
-                  type="text"
-                  value={settings.aboutContent?.subtitle || ''}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    aboutContent: { ...prev.aboutContent, subtitle: e.target.value }
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Описание</label>
-                <textarea
-                  value={settings.aboutContent?.description || ''}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    aboutContent: { ...prev.aboutContent, description: e.target.value }
-                  }))}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Миссия</label>
-                <textarea
-                  value={settings.aboutContent?.mission || ''}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    aboutContent: { ...prev.aboutContent, mission: e.target.value }
-                  }))}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Видение</label>
-                <textarea
-                  value={settings.aboutContent?.vision || ''}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    aboutContent: { ...prev.aboutContent, vision: e.target.value }
-                  }))}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <button
-                onClick={handleSaveSettings}
-                className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Сохранить настройки
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Contacts Tab */}
         {activeTab === 'contacts' && (
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Настройки страницы "Контакты"</h2>
             
             <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Заголовок</label>
-                <input
-                  type="text"
-                  value={settings.contactInfo?.title || ''}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    contactInfo: { ...prev.contactInfo, title: e.target.value }
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Подзаголовок</label>
-                <input
-                  type="text"
-                  value={settings.contactInfo?.subtitle || ''}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    contactInfo: { ...prev.contactInfo, subtitle: e.target.value }
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Заголовок</label>
+                  <input
+                    type="text"
+                    value={settings.contactInfo?.title || ''}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      contactInfo: { ...prev.contactInfo, title: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Подзаголовок</label>
+                  <input
+                    type="text"
+                    value={settings.contactInfo?.subtitle || ''}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      contactInfo: { ...prev.contactInfo, subtitle: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
                   <input
@@ -781,7 +720,7 @@ const AdminPage: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Настройки администратора</h2>
             
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
                 <h3 className="text-lg font-semibold mb-4">Текущие учетные данные</h3>
                 <p className="text-gray-600">Логин: <strong>{credentials.username}</strong></p>
@@ -816,6 +755,42 @@ const AdminPage: React.FC = () => {
                   <Lock className="w-4 h-4 mr-2" />
                   Обновить учетные данные
                 </button>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Ссылка на админку</h3>
+                <p className="text-gray-600 mb-4">
+                  Текущая ссылка: <strong>https://vgosty05.ru/{adminPath}</strong>
+                </p>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Новая ссылка</label>
+                    <div className="flex">
+                      <span className="inline-flex items-center px-3 py-2 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l-md">
+                        vgosty05.ru/
+                      </span>
+                      <input
+                        type="text"
+                        value={newAdminPath}
+                        onChange={(e) => setNewAdminPath(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="my-secret-admin"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={handleUpdateAdminPath}
+                      className="flex items-center px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                    >
+                      <Globe className="w-4 h-4 mr-2" />
+                      Изменить ссылку
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  ⚠️ После изменения ссылки, админка будет доступна только по новому адресу!
+                </p>
               </div>
             </div>
           </div>

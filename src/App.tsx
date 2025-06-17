@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import CabinDetailPage from './pages/CabinDetailPage';
@@ -6,8 +6,24 @@ import AdminPage from './pages/AdminPage';
 import CabinsListPage from './pages/CabinsListPage';
 import AboutPage from './pages/AboutPage';
 import ContactsPage from './pages/ContactsPage';
+import { apiService } from './services/api';
 
 function App() {
+  const [adminPath, setAdminPath] = useState('admin');
+
+  useEffect(() => {
+    const loadAdminPath = async () => {
+      try {
+        const response = await apiService.getAdminPath();
+        setAdminPath(response.path);
+      } catch (error) {
+        console.error('Error loading admin path:', error);
+      }
+    };
+
+    loadAdminPath();
+  }, []);
+
   return (
     <Router>
       <Routes>
@@ -17,6 +33,7 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path={`/${adminPath}`} element={<AdminPage />} />
       </Routes>
     </Router>
   );
