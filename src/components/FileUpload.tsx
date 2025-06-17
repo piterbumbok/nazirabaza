@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Upload, X, Image } from 'lucide-react';
 
 interface FileUploadProps {
-  onFileSelect: (file: File) => void;
+  onFileSelect: (files: File[]) => void;
   accept?: string;
   multiple?: boolean;
   className?: string;
@@ -11,7 +11,7 @@ interface FileUploadProps {
 const FileUpload: React.FC<FileUploadProps> = ({ 
   onFileSelect, 
   accept = "image/*", 
-  multiple = false,
+  multiple = true,
   className = ""
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -19,11 +19,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   const handleFileSelect = (files: FileList | null) => {
     if (files && files.length > 0) {
-      if (multiple) {
-        Array.from(files).forEach(file => onFileSelect(file));
-      } else {
-        onFileSelect(files[0]);
-      }
+      const fileArray = Array.from(files);
+      onFileSelect(fileArray);
     }
   };
 
@@ -64,7 +61,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             Перетащите файлы сюда или <span className="text-blue-600 font-medium">выберите файлы</span>
           </p>
           <p className="text-sm text-gray-500">
-            Поддерживаются: JPG, PNG, GIF (макс. 10MB)
+            {multiple ? 'Можно выбрать несколько файлов' : 'Выберите один файл'} • JPG, PNG, GIF (макс. 10MB каждый)
           </p>
         </div>
       </div>

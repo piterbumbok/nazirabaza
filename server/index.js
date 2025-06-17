@@ -121,6 +121,18 @@ async function initDatabase() {
         else console.log('✅ Admin table ready');
       });
 
+      // Create admin path table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS admin_path (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          path TEXT UNIQUE NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `, (err) => {
+        if (err) console.error('Error creating admin path table:', err);
+        else console.log('✅ Admin path table ready');
+      });
+
       // Insert default admin credentials if not exists
       db.get('SELECT * FROM admin_credentials WHERE username = ?', ['admin'], (err, row) => {
         if (err) {
@@ -138,6 +150,26 @@ async function initDatabase() {
           );
         } else {
           console.log('✅ Admin credentials exist');
+        }
+      });
+
+      // Insert default admin path if not exists
+      db.get('SELECT * FROM admin_path WHERE path = ?', ['admin'], (err, row) => {
+        if (err) {
+          console.error('Error checking admin path:', err);
+          return;
+        }
+        if (!row) {
+          db.run(
+            'INSERT INTO admin_path (path) VALUES (?)',
+            ['admin'],
+            (err) => {
+              if (err) console.error('Error creating default admin path:', err);
+              else console.log('✅ Default admin path created (/admin)');
+            }
+          );
+        } else {
+          console.log('✅ Admin path exists');
         }
       });
 
@@ -485,6 +517,41 @@ app.put('/api/admin/credentials', (req, res) => {
   });
 });
 
+// Get admin path
+app.get('/api/admin/path', (req, res) => {
+  console.log('🔗 GET /api/admin/path');
+  db.get('SELECT path FROM admin_path ORDER BY id DESC LIMIT 1', (err, row) => {
+    if (err) {
+      console.error('Error fetching admin path:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.json({ path: row ? row.path : 'admin' });
+  });
+});
+
+// Update admin path
+app.put('/api/admin/path', (req, res) => {
+  console.log('🔗 PUT /api/admin/path');
+  const { path } = req.body;
+  
+  // Delete all existing paths and insert new one
+  db.run('DELETE FROM admin_path', (err) => {
+    if (err) {
+      console.error('Error clearing admin paths:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    db.run('INSERT INTO admin_path (path) VALUES (?)', [path], (err) => {
+      if (err) {
+        console.error('Error updating admin path:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      console.log(`✅ Admin path updated: /${path}`);
+      res.json({ success: true, message: 'Admin path updated successfully' });
+    });
+  });
+});
+
 // Get site settings
 app.get('/api/settings', (req, res) => {
   console.log('⚙️ GET /api/settings');
@@ -560,6 +627,32 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
     console.error('Error uploading file:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Check admin path and serve admin page
+app.get('/:path', (req, res, next) => {
+  const requestedPath = req.params.path;
+  
+  // Check if this path is an admin path
+  db.get('SELECT path FROM admin_path WHERE path = ?', [requestedPath], (err, row) => {
+    if (err) {
+      console.error('Error checking admin path:', err);
+      return next();
+    }
+    
+    if (row) {
+      // This is an admin path, serve the React app
+      const indexPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send('Frontend not built. Run: npm run build');
+      }
+    } else {
+      // Not an admin path, continue to next middleware
+      next();
+    }
+  });
 });
 
 // Serve React app for all other routes

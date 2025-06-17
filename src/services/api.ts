@@ -105,7 +105,14 @@ class ApiService {
     });
   }
 
-  // File upload
+  // File upload - multiple files
+  async uploadImages(files: File[]): Promise<{ imageUrls: string[] }> {
+    const uploadPromises = files.map(file => this.uploadImage(file));
+    const results = await Promise.all(uploadPromises);
+    return { imageUrls: results.map(result => result.imageUrl) };
+  }
+
+  // File upload - single file
   async uploadImage(file: File): Promise<{ imageUrl: string }> {
     const formData = new FormData();
     formData.append('image', file);
