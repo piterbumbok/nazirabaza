@@ -8,6 +8,8 @@ interface Feature {
 }
 
 const WhyChooseUs: React.FC = () => {
+  const [title, setTitle] = useState('Почему выбирают нас');
+  const [subtitle, setSubtitle] = useState('Мы создаем идеальные условия для вашего отдыха на Каспийском море, уделяя внимание каждой детали.');
   const [features, setFeatures] = useState<Feature[]>([
     {
       title: 'Лучшая локация',
@@ -35,27 +37,36 @@ const WhyChooseUs: React.FC = () => {
   ];
 
   useEffect(() => {
-    const loadFeatures = async () => {
+    const loadContent = async () => {
       try {
         const settings = await apiService.getSettings();
+        
+        if (settings.whyChooseUsTitle) {
+          setTitle(settings.whyChooseUsTitle);
+        }
+        
+        if (settings.whyChooseUsSubtitle) {
+          setSubtitle(settings.whyChooseUsSubtitle);
+        }
+        
         if (settings.whyChooseUsFeatures && Array.isArray(settings.whyChooseUsFeatures)) {
           setFeatures(settings.whyChooseUsFeatures);
         }
       } catch (error) {
-        console.error('Error loading features:', error);
+        console.error('Error loading content:', error);
       }
     };
 
-    loadFeatures();
+    loadContent();
   }, []);
 
   return (
     <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50/30">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Почему выбирают нас</h2>
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">{title}</h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Мы создаем идеальные условия для вашего отдыха на Каспийском море, уделяя внимание каждой детали.
+            {subtitle}
           </p>
         </div>
 
