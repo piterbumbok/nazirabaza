@@ -60,6 +60,8 @@ interface SiteSettings {
       weekends: string;
     };
   };
+  defaultMapUrl?: string;
+  defaultDistanceToSea?: string;
 }
 
 interface Review {
@@ -114,7 +116,9 @@ const AdminPage: React.FC = () => {
     amenities: STANDARD_AMENITIES.slice(0, 5), // Первые 5 стандартных удобств
     images: [] as string[],
     featured: false,
-    active: true
+    active: true,
+    distanceToSea: '',
+    mapUrl: ''
   });
 
   // Проверяем сессию при загрузке
@@ -312,10 +316,21 @@ const AdminPage: React.FC = () => {
 
   const handleToggleCabinActive = async (cabin: Cabin) => {
     try {
-      const updatedCabin = { ...cabin, active: !cabin.active };
-      await updateCabin(cabin.id, updatedCabin);
+      const updatedCabin = { 
+        ...cabin, 
+        active: !cabin.active,
+        // Убираем поля, которые не нужны для API
+        id: undefined
+      };
+      
+      // Удаляем id из объекта перед отправкой
+      const { id, ...cabinDataWithoutId } = updatedCabin;
+      
+      await updateCabin(cabin.id, cabinDataWithoutId);
       // Обновляем локальное состояние
       await fetchCabins();
+      
+      console.log(`Cabin ${cabin.id} active status changed to: ${!cabin.active}`);
     } catch (error) {
       console.error('Error toggling cabin active:', error);
       alert('Ошибка при изменении статуса домика');
@@ -356,7 +371,9 @@ const AdminPage: React.FC = () => {
       amenities: STANDARD_AMENITIES.slice(0, 5), // Сбрасываем к стандартным удобствам
       images: [],
       featured: false,
-      active: true
+      active: true,
+      distanceToSea: settings.defaultDistanceToSea || '5 мин',
+      mapUrl: settings.defaultMapUrl || ''
     });
     setEditingCabin(null);
     setIsAddingCabin(false);
@@ -374,7 +391,9 @@ const AdminPage: React.FC = () => {
       amenities: cabin.amenities,
       images: cabin.images,
       featured: cabin.featured,
-      active: cabin.active !== undefined ? cabin.active : true
+      active: cabin.active !== undefined ? cabin.active : true,
+      distanceToSea: (cabin as any).distanceToSea || '5 мин',
+      mapUrl: (cabin as any).mapUrl || ''
     });
     setEditingCabin(cabin);
     setIsAddingCabin(true);
@@ -521,6 +540,17 @@ const AdminPage: React.FC = () => {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">До моря</label>
+                    <input
+                      type="text"
+                      value={cabinForm.distanceToSea}
+                      onChange={(e) => setCabinForm(prev => ({ ...prev, distanceToSea: e.target.value }))}
+                      placeholder="5 мин"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Спальни</label>
@@ -549,6 +579,20 @@ const AdminPage: React.FC = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Карта (URL)</label>
+                    <input
+                      type="url"
+                      value={cabinForm.mapUrl}
+                      onChange={(e) => setCabinForm(prev => ({ ...prev, mapUrl: e.target.value }))}
+                      placeholder="https://maps.google.com/..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Если не заполнено, будет использована карта по умолчанию из настроек
+                    </p>
                   </div>
 
                   <div className="md:col-span-2">
@@ -698,7 +742,11 @@ const AdminPage: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleToggleCabinActive(cabin)}
-                      className={`p-2 rounded-lg ${cabin.active ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
+                      className={`p-2 rounded-lg transition-colors ${
+                        cabin.active 
+                          ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                          : 'bg-green-100 text-green-600 hover:bg-green-200'
+                      }`}
                       title={cabin.active ? 'Скрыть с сайта' : 'Показать на сайте'}
                     >
                       {cabin.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -749,6 +797,33 @@ const AdminPage: React.FC = () => {
                       value={settings.phone || ''}
                       onChange={(e) => setSettings(prev => ({ ...prev, phone: e.target.value }))}
                       placeholder="+7 965 411-15-55"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-blue-600">Настройки для всех домиков</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Расстояние до моря по умолчанию</label>
+                    <input
+                      type="text"
+                      value={settings.defaultDistanceToSea || ''}
+                      onChange={(e) => setSettings(prev => ({ ...prev, defaultDistanceToSea: e.target.value }))}
+                      placeholder="5 мин"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Карта по умолчанию (URL)</label>
+                    <input
+                      type="url"
+                      value={settings.defaultMapUrl || ''}
+                      onChange={(e) => setSettings(prev => ({ ...prev, defaultMapUrl: e.target.value }))}
+                      placeholder="https://maps.google.com/..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>

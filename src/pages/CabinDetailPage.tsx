@@ -41,6 +41,10 @@ const CabinDetailPage: React.FC = () => {
     );
   }
 
+  // Получаем расстояние до моря и карту из данных домика или используем значения по умолчанию
+  const distanceToSea = (cabin as any).distanceToSea || '5 мин';
+  const mapUrl = (cabin as any).mapUrl || '';
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header phone="+7 965 411-15-55" />
@@ -78,7 +82,7 @@ const CabinDetailPage: React.FC = () => {
                   <div className="flex flex-col items-center p-4 bg-gray-50 rounded-xl">
                     <MapPin className="w-8 h-8 text-blue-600 mb-3" />
                     <span className="text-sm text-gray-600 mb-1">До моря</span>
-                    <span className="font-bold text-gray-900 text-lg">5 мин</span>
+                    <span className="font-bold text-gray-900 text-lg">{distanceToSea}</span>
                   </div>
                 </div>
 
@@ -108,11 +112,32 @@ const CabinDetailPage: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Расположение</h2>
                 <p className="text-gray-700 mb-6 text-lg leading-relaxed">
                   Объект расположен в живописном месте на берегу моря. Из окон открывается 
-                  потрясающий вид на морской пейзаж. В 5 минутах ходьбы находится песчаный пляж.
+                  потрясающий вид на морской пейзаж. В {distanceToSea} ходьбы находится песчаный пляж.
                 </p>
-                <div className="h-64 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
-                  <p className="text-blue-800 font-medium">Карта местности</p>
-                </div>
+                
+                {/* Карта */}
+                {mapUrl ? (
+                  <div className="h-64 rounded-xl overflow-hidden">
+                    <iframe
+                      src={mapUrl}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title="Карта расположения"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-64 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
+                    <div className="text-center">
+                      <MapPin className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+                      <p className="text-blue-800 font-medium text-lg">Карта местности</p>
+                      <p className="text-blue-600">Расстояние до моря: {distanceToSea}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
