@@ -88,6 +88,7 @@ async function initDatabase() {
           amenities TEXT,
           images TEXT,
           featured BOOLEAN DEFAULT 0,
+          active BOOLEAN DEFAULT 1,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `, (err) => {
@@ -131,6 +132,22 @@ async function initDatabase() {
       `, (err) => {
         if (err) console.error('Error creating admin path table:', err);
         else console.log('✅ Admin path table ready');
+      });
+
+      // Create reviews table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS reviews (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          email TEXT NOT NULL,
+          rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+          comment TEXT NOT NULL,
+          approved BOOLEAN DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `, (err) => {
+        if (err) console.error('Error creating reviews table:', err);
+        else console.log('✅ Reviews table ready');
       });
 
       // Insert default admin credentials if not exists
@@ -197,7 +214,8 @@ async function initDatabase() {
                 'https://images.pexels.com/photos/2119713/pexels-photo-2119713.jpeg',
                 'https://images.pexels.com/photos/1329711/pexels-photo-1329711.jpeg'
               ]),
-              featured: 1
+              featured: 1,
+              active: 1
             },
             {
               name: 'Семейный причал',
@@ -213,14 +231,15 @@ async function initDatabase() {
                 'https://images.pexels.com/photos/2725675/pexels-photo-2725675.jpeg',
                 'https://images.pexels.com/photos/4450337/pexels-photo-4450337.jpeg'
               ]),
-              featured: 1
+              featured: 1,
+              active: 1
             }
           ];
 
           defaultCabins.forEach((cabin, index) => {
             db.run(`
-              INSERT INTO cabins (name, description, price_per_night, location, bedrooms, bathrooms, max_guests, amenities, images, featured)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO cabins (name, description, price_per_night, location, bedrooms, bathrooms, max_guests, amenities, images, featured, active)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
               cabin.name,
               cabin.description,
@@ -231,7 +250,8 @@ async function initDatabase() {
               cabin.max_guests,
               cabin.amenities,
               cabin.images,
-              cabin.featured
+              cabin.featured,
+              cabin.active
             ], (err) => {
               if (err) console.error(`Error adding cabin ${index + 1}:`, err);
               else console.log(`✅ Added cabin: ${cabin.name}`);
@@ -260,10 +280,10 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 
-// Get all cabins
+// Get all cabins (only active ones for public)
 app.get('/api/cabins', (req, res) => {
   console.log('📋 GET /api/cabins');
-  db.all('SELECT * FROM cabins ORDER BY created_at DESC', (err, rows) => {
+  db.all('SELECT * FROM cabins WHERE active = 1 ORDER BY created_at DESC', (err, rows) => {
     if (err) {
       console.error('Error fetching cabins:', err);
       return res.status(500).json({ error: 'Internal server error' });
@@ -280,10 +300,40 @@ app.get('/api/cabins', (req, res) => {
       maxGuests: row.max_guests,
       amenities: row.amenities ? JSON.parse(row.amenities) : [],
       images: row.images ? JSON.parse(row.images) : [],
-      featured: Boolean(row.featured)
+      featured: Boolean(row.featured),
+      active: Boolean(row.active)
     }));
     
-    console.log(`✅ Returned ${cabins.length} cabins`);
+    console.log(`✅ Returned ${cabins.length} active cabins`);
+    res.json(cabins);
+  });
+});
+
+// Get all cabins for admin (including inactive)
+app.get('/api/admin/cabins', (req, res) => {
+  console.log('📋 GET /api/admin/cabins');
+  db.all('SELECT * FROM cabins ORDER BY created_at DESC', (err, rows) => {
+    if (err) {
+      console.error('Error fetching admin cabins:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    const cabins = rows.map(row => ({
+      id: row.id.toString(),
+      name: row.name,
+      description: row.description,
+      pricePerNight: row.price_per_night,
+      location: row.location,
+      bedrooms: row.bedrooms,
+      bathrooms: row.bathrooms,
+      maxGuests: row.max_guests,
+      amenities: row.amenities ? JSON.parse(row.amenities) : [],
+      images: row.images ? JSON.parse(row.images) : [],
+      featured: Boolean(row.featured),
+      active: Boolean(row.active)
+    }));
+    
+    console.log(`✅ Returned ${cabins.length} cabins for admin`);
     res.json(cabins);
   });
 });
@@ -293,14 +343,14 @@ app.get('/api/cabins/:id', (req, res) => {
   const { id } = req.params;
   console.log(`📋 GET /api/cabins/${id}`);
   
-  db.get('SELECT * FROM cabins WHERE id = ?', [id], (err, row) => {
+  db.get('SELECT * FROM cabins WHERE id = ? AND active = 1', [id], (err, row) => {
     if (err) {
       console.error('Error fetching cabin:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
     
     if (!row) {
-      console.log(`❌ Cabin ${id} not found`);
+      console.log(`❌ Cabin ${id} not found or inactive`);
       return res.status(404).json({ error: 'Cabin not found' });
     }
 
@@ -315,7 +365,8 @@ app.get('/api/cabins/:id', (req, res) => {
       maxGuests: row.max_guests,
       amenities: row.amenities ? JSON.parse(row.amenities) : [],
       images: row.images ? JSON.parse(row.images) : [],
-      featured: Boolean(row.featured)
+      featured: Boolean(row.featured),
+      active: Boolean(row.active)
     };
     
     console.log(`✅ Returned cabin: ${cabin.name}`);
@@ -336,12 +387,13 @@ app.post('/api/cabins', (req, res) => {
     maxGuests,
     amenities,
     images,
-    featured
+    featured,
+    active = true
   } = req.body;
 
   db.run(`
-    INSERT INTO cabins (name, description, price_per_night, location, bedrooms, bathrooms, max_guests, amenities, images, featured)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO cabins (name, description, price_per_night, location, bedrooms, bathrooms, max_guests, amenities, images, featured, active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     name,
     description,
@@ -352,7 +404,8 @@ app.post('/api/cabins', (req, res) => {
     maxGuests,
     JSON.stringify(amenities),
     JSON.stringify(images),
-    featured ? 1 : 0
+    featured ? 1 : 0,
+    active ? 1 : 0
   ], function(err) {
     if (err) {
       console.error('Error creating cabin:', err);
@@ -377,7 +430,8 @@ app.post('/api/cabins', (req, res) => {
         maxGuests: row.max_guests,
         amenities: row.amenities ? JSON.parse(row.amenities) : [],
         images: row.images ? JSON.parse(row.images) : [],
-        featured: Boolean(row.featured)
+        featured: Boolean(row.featured),
+        active: Boolean(row.active)
       };
 
       console.log(`✅ Created cabin: ${cabin.name}`);
@@ -401,14 +455,15 @@ app.put('/api/cabins/:id', (req, res) => {
     maxGuests,
     amenities,
     images,
-    featured
+    featured,
+    active = true
   } = req.body;
 
   db.run(`
     UPDATE cabins 
     SET name = ?, description = ?, price_per_night = ?, location = ?, 
         bedrooms = ?, bathrooms = ?, max_guests = ?, amenities = ?, 
-        images = ?, featured = ?
+        images = ?, featured = ?, active = ?
     WHERE id = ?
   `, [
     name,
@@ -421,6 +476,7 @@ app.put('/api/cabins/:id', (req, res) => {
     JSON.stringify(amenities),
     JSON.stringify(images),
     featured ? 1 : 0,
+    active ? 1 : 0,
     id
   ], function(err) {
     if (err) {
@@ -451,7 +507,8 @@ app.put('/api/cabins/:id', (req, res) => {
         maxGuests: row.max_guests,
         amenities: row.amenities ? JSON.parse(row.amenities) : [],
         images: row.images ? JSON.parse(row.images) : [],
-        featured: Boolean(row.featured)
+        featured: Boolean(row.featured),
+        active: Boolean(row.active)
       };
 
       console.log(`✅ Updated cabin: ${cabin.name}`);
@@ -478,6 +535,167 @@ app.delete('/api/cabins/:id', (req, res) => {
 
     console.log(`✅ Deleted cabin ${id}`);
     res.json({ message: 'Cabin deleted successfully' });
+  });
+});
+
+// Reviews API
+
+// Get all reviews (admin only)
+app.get('/api/reviews', (req, res) => {
+  console.log('📝 GET /api/reviews');
+  db.all('SELECT * FROM reviews ORDER BY created_at DESC', (err, rows) => {
+    if (err) {
+      console.error('Error fetching reviews:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    const reviews = rows.map(row => ({
+      id: row.id.toString(),
+      name: row.name,
+      email: row.email,
+      rating: row.rating,
+      comment: row.comment,
+      approved: Boolean(row.approved),
+      created_at: row.created_at
+    }));
+    
+    console.log(`✅ Returned ${reviews.length} reviews`);
+    res.json(reviews);
+  });
+});
+
+// Get approved reviews (public)
+app.get('/api/reviews/approved', (req, res) => {
+  console.log('📝 GET /api/reviews/approved');
+  db.all('SELECT * FROM reviews WHERE approved = 1 ORDER BY created_at DESC', (err, rows) => {
+    if (err) {
+      console.error('Error fetching approved reviews:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    const reviews = rows.map(row => ({
+      id: row.id.toString(),
+      name: row.name,
+      rating: row.rating,
+      comment: row.comment,
+      created_at: row.created_at
+    }));
+    
+    console.log(`✅ Returned ${reviews.length} approved reviews`);
+    res.json(reviews);
+  });
+});
+
+// Create review
+app.post('/api/reviews', (req, res) => {
+  console.log('➕ POST /api/reviews');
+  const { name, email, rating, comment } = req.body;
+
+  // Simple validation
+  if (!name || !email || !rating || !comment) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  if (rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+  }
+
+  // Simple email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+
+  db.run(`
+    INSERT INTO reviews (name, email, rating, comment, approved)
+    VALUES (?, ?, ?, ?, 0)
+  `, [name, email, rating, comment], function(err) {
+    if (err) {
+      console.error('Error creating review:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    // Get the created review
+    db.get('SELECT * FROM reviews WHERE id = ?', [this.lastID], (err, row) => {
+      if (err) {
+        console.error('Error fetching created review:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      const review = {
+        id: row.id.toString(),
+        name: row.name,
+        email: row.email,
+        rating: row.rating,
+        comment: row.comment,
+        approved: Boolean(row.approved),
+        created_at: row.created_at
+      };
+
+      console.log(`✅ Created review from: ${review.name}`);
+      res.status(201).json(review);
+    });
+  });
+});
+
+// Update review (approve/disapprove)
+app.put('/api/reviews/:id', (req, res) => {
+  const { id } = req.params;
+  const { approved } = req.body;
+  console.log(`✏️ PUT /api/reviews/${id} - approved: ${approved}`);
+
+  db.run('UPDATE reviews SET approved = ? WHERE id = ?', [approved ? 1 : 0, id], function(err) {
+    if (err) {
+      console.error('Error updating review:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    if (this.changes === 0) {
+      console.log(`❌ Review ${id} not found for update`);
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Get the updated review
+    db.get('SELECT * FROM reviews WHERE id = ?', [id], (err, row) => {
+      if (err) {
+        console.error('Error fetching updated review:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+
+      const review = {
+        id: row.id.toString(),
+        name: row.name,
+        email: row.email,
+        rating: row.rating,
+        comment: row.comment,
+        approved: Boolean(row.approved),
+        created_at: row.created_at
+      };
+
+      console.log(`✅ Updated review: ${review.name} - approved: ${review.approved}`);
+      res.json(review);
+    });
+  });
+});
+
+// Delete review
+app.delete('/api/reviews/:id', (req, res) => {
+  const { id } = req.params;
+  console.log(`🗑️ DELETE /api/reviews/${id}`);
+  
+  db.run('DELETE FROM reviews WHERE id = ?', [id], function(err) {
+    if (err) {
+      console.error('Error deleting review:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    if (this.changes === 0) {
+      console.log(`❌ Review ${id} not found for deletion`);
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    console.log(`✅ Deleted review ${id}`);
+    res.json({ message: 'Review deleted successfully' });
   });
 });
 

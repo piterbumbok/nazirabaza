@@ -10,6 +10,7 @@ export interface Cabin {
   amenities: string[];
   images: string[];
   featured: boolean;
+  active?: boolean;
 }
 
 export interface BookingDetails {
@@ -18,4 +19,14 @@ export interface BookingDetails {
   checkOut: Date | null;
   guests: number;
   totalPrice: number;
+}
+
+export interface Review {
+  id: string;
+  name: string;
+  email?: string;
+  rating: number;
+  comment: string;
+  approved?: boolean;
+  created_at: string;
 }

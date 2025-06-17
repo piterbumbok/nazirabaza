@@ -91,7 +91,8 @@ const Header: React.FC<HeaderProps> = ({ phone = '+7 965 411-15-55' }) => {
           {[
             { name: 'Главная', path: '/' },
             { name: 'Каталог', path: '/cabins' },
-            { name: 'Контакты', path: '/contacts' }
+            { name: 'Контакты', path: '/contacts' },
+            { name: 'Отзывы', path: '/reviews' }
           ].map((item) => (
             <Link
               key={item.name}
@@ -129,7 +130,8 @@ const Header: React.FC<HeaderProps> = ({ phone = '+7 965 411-15-55' }) => {
               {[
                 { name: 'Главная', path: '/' },
                 { name: 'Каталог', path: '/cabins' },
-                { name: 'Контакты', path: '/contacts' }
+                { name: 'Контакты', path: '/contacts' },
+                { name: 'Отзывы', path: '/reviews' }
               ].map((item) => (
                 <Link
                   key={item.name}

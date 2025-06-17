@@ -15,7 +15,13 @@ import {
   FileText,
   Phone,
   Mail,
-  MapPin
+  MapPin,
+  MessageSquare,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  XCircle,
+  Star
 } from 'lucide-react';
 import LoginForm from '../components/LoginForm';
 import FileUpload from '../components/FileUpload';
@@ -53,6 +59,16 @@ interface SiteSettings {
   };
 }
 
+interface Review {
+  id: string;
+  name: string;
+  email: string;
+  rating: number;
+  comment: string;
+  approved: boolean;
+  created_at: string;
+}
+
 const AdminPage: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('cabins');
@@ -64,6 +80,7 @@ const AdminPage: React.FC = () => {
   const [adminPath, setAdminPath] = useState('admin');
   const [newAdminPath, setNewAdminPath] = useState('');
   const [uploadingImages, setUploadingImages] = useState<string[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
 
   const { cabins, loading, addCabin, updateCabin, deleteCabin, fetchCabins } = useCabins();
 
@@ -77,13 +94,39 @@ const AdminPage: React.FC = () => {
     maxGuests: 2,
     amenities: [''],
     images: [''],
-    featured: false
+    featured: false,
+    active: true
   });
 
+  // Проверяем сессию при загрузке
   useEffect(() => {
-    loadSettings();
-    loadAdminPath();
+    const savedAuth = localStorage.getItem('vgosti_admin_auth');
+    const savedTime = localStorage.getItem('vgosti_admin_time');
+    
+    if (savedAuth && savedTime) {
+      const authTime = parseInt(savedTime);
+      const now = Date.now();
+      const thirtyMinutes = 30 * 60 * 1000; // 30 минут в миллисекундах
+      
+      if (now - authTime < thirtyMinutes) {
+        setIsAuthenticated(true);
+        const authData = JSON.parse(savedAuth);
+        setCredentials(authData);
+      } else {
+        // Сессия истекла
+        localStorage.removeItem('vgosti_admin_auth');
+        localStorage.removeItem('vgosti_admin_time');
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadSettings();
+      loadAdminPath();
+      loadReviews();
+    }
+  }, [isAuthenticated]);
 
   const loadSettings = async () => {
     try {
@@ -103,12 +146,26 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const loadReviews = async () => {
+    try {
+      const reviewsData = await apiService.getReviews();
+      setReviews(reviewsData);
+    } catch (error) {
+      console.error('Error loading reviews:', error);
+    }
+  };
+
   const handleLogin = async (username: string, password: string) => {
     try {
       const response = await apiService.login(username, password);
       if (response.success) {
         setIsAuthenticated(true);
         setCredentials({ username, password });
+        
+        // Сохраняем сессию на 30 минут
+        localStorage.setItem('vgosti_admin_auth', JSON.stringify({ username, password }));
+        localStorage.setItem('vgosti_admin_time', Date.now().toString());
+        
         return true;
       }
       return false;
@@ -116,6 +173,12 @@ const AdminPage: React.FC = () => {
       console.error('Login error:', error);
       return false;
     }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('vgosti_admin_auth');
+    localStorage.removeItem('vgosti_admin_time');
   };
 
   const handleSaveSettings = async () => {
@@ -132,6 +195,11 @@ const AdminPage: React.FC = () => {
     try {
       await apiService.updateCredentials(newCredentials.username, newCredentials.password);
       setCredentials(newCredentials);
+      
+      // Обновляем сохраненную сессию
+      localStorage.setItem('vgosti_admin_auth', JSON.stringify(newCredentials));
+      localStorage.setItem('vgosti_admin_time', Date.now().toString());
+      
       alert('Учетные данные обновлены!');
     } catch (error) {
       console.error('Error updating credentials:', error);
@@ -148,8 +216,13 @@ const AdminPage: React.FC = () => {
     try {
       await apiService.updateAdminPath(newAdminPath);
       setAdminPath(newAdminPath);
-      alert(`Ссылка на админку изменена! Новая ссылка: /${newAdminPath}`);
+      alert(`Ссылка на админку изменена! Новая ссылка: /${newAdminPath}\n\nСтарая ссылка /admin больше не работает!`);
       setNewAdminPath('');
+      
+      // Перенаправляем на новую ссылку
+      setTimeout(() => {
+        window.location.href = `/${newAdminPath}`;
+      }, 2000);
     } catch (error) {
       console.error('Error updating admin path:', error);
       alert('Ошибка при обновлении ссылки');
@@ -217,6 +290,38 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const handleToggleCabinActive = async (cabin: Cabin) => {
+    try {
+      await updateCabin(cabin.id, { ...cabin, active: !cabin.active });
+      fetchCabins();
+    } catch (error) {
+      console.error('Error toggling cabin active:', error);
+      alert('Ошибка при изменении статуса домика');
+    }
+  };
+
+  const handleApproveReview = async (reviewId: string, approved: boolean) => {
+    try {
+      await apiService.updateReview(reviewId, { approved });
+      loadReviews();
+    } catch (error) {
+      console.error('Error updating review:', error);
+      alert('Ошибка при обновлении отзыва');
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (confirm('Удалить этот отзыв?')) {
+      try {
+        await apiService.deleteReview(reviewId);
+        loadReviews();
+      } catch (error) {
+        console.error('Error deleting review:', error);
+        alert('Ошибка при удалении отзыва');
+      }
+    }
+  };
+
   const resetCabinForm = () => {
     setCabinForm({
       name: '',
@@ -228,7 +333,8 @@ const AdminPage: React.FC = () => {
       maxGuests: 2,
       amenities: [''],
       images: [''],
-      featured: false
+      featured: false,
+      active: true
     });
     setEditingCabin(null);
     setIsAddingCabin(false);
@@ -245,7 +351,8 @@ const AdminPage: React.FC = () => {
       maxGuests: cabin.maxGuests,
       amenities: [...cabin.amenities, ''],
       images: [...cabin.images, ''],
-      featured: cabin.featured
+      featured: cabin.featured,
+      active: cabin.active || true
     });
     setEditingCabin(cabin);
     setIsAddingCabin(true);
@@ -267,7 +374,7 @@ const AdminPage: React.FC = () => {
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-500">Ссылка: /{adminPath}</span>
               <button
-                onClick={() => setIsAuthenticated(false)}
+                onClick={handleLogout}
                 className="text-gray-500 hover:text-gray-700"
               >
                 Выйти
@@ -283,6 +390,7 @@ const AdminPage: React.FC = () => {
             { id: 'cabins', label: 'Домики', icon: Home },
             { id: 'settings', label: 'Настройки сайта', icon: Settings },
             { id: 'contacts', label: 'Контакты', icon: Phone },
+            { id: 'reviews', label: 'Отзывы', icon: MessageSquare },
             { id: 'admin', label: 'Админ', icon: User }
           ].map(({ id, label, icon: Icon }) => (
             <button
@@ -458,7 +566,7 @@ const AdminPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div className="md:col-span-2 flex space-x-6">
                     <label className="flex items-center">
                       <input
                         type="checkbox"
@@ -467,6 +575,15 @@ const AdminPage: React.FC = () => {
                         className="mr-2"
                       />
                       Рекомендуемый домик
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={cabinForm.active}
+                        onChange={(e) => setCabinForm(prev => ({ ...prev, active: e.target.checked }))}
+                        className="mr-2"
+                      />
+                      Активный (виден на сайте)
                     </label>
                   </div>
                 </div>
@@ -483,34 +600,46 @@ const AdminPage: React.FC = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Список домиков горизонтально */}
+            <div className="space-y-4">
               {cabins.map((cabin) => (
-                <div key={cabin.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                <div key={cabin.id} className="bg-white rounded-lg shadow-sm border p-4 flex items-center space-x-4">
                   <img
                     src={cabin.images[0] || '/placeholder.jpg'}
                     alt={cabin.name}
-                    className="w-full h-32 object-cover"
+                    className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
                   />
-                  <div className="p-3">
-                    <h3 className="font-semibold text-sm mb-1 truncate">{cabin.name}</h3>
-                    <p className="text-gray-600 text-xs mb-1 truncate">{cabin.location}</p>
-                    <p className="text-blue-600 font-bold text-sm mb-2">{formatPrice(cabin.pricePerNight)}</p>
-                    <div className="flex justify-between">
-                      <button
-                        onClick={() => startEditCabin(cabin)}
-                        className="flex items-center px-2 py-1 text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        <Edit className="w-3 h-3 mr-1" />
-                        Изменить
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCabin(cabin.id)}
-                        className="flex items-center px-2 py-1 text-xs text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Удалить
-                      </button>
+                  <div className="flex-grow">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <h3 className="font-semibold text-lg">{cabin.name}</h3>
+                      {cabin.featured && <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">Рекомендуемый</span>}
+                      <span className={`text-xs px-2 py-1 rounded ${cabin.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {cabin.active ? 'Активный' : 'Неактивный'}
+                      </span>
                     </div>
+                    <p className="text-gray-600 text-sm mb-1">{cabin.location}</p>
+                    <p className="text-blue-600 font-bold">{formatPrice(cabin.pricePerNight)}</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleToggleCabinActive(cabin)}
+                      className={`p-2 rounded-lg ${cabin.active ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
+                      title={cabin.active ? 'Скрыть с сайта' : 'Показать на сайте'}
+                    >
+                      {cabin.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={() => startEditCabin(cabin)}
+                      className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCabin(cabin.id)}
+                      className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -523,52 +652,65 @@ const AdminPage: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Настройки сайта</h2>
             
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Название сайта</label>
-                  <input
-                    type="text"
-                    value={settings.siteName || ''}
-                    onChange={(e) => setSettings(prev => ({ ...prev, siteName: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-blue-600">Основные настройки</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Название сайта (в шапке и подвале)</label>
+                    <input
+                      type="text"
+                      value={settings.siteName || ''}
+                      onChange={(e) => setSettings(prev => ({ ...prev, siteName: e.target.value }))}
+                      placeholder="В гости"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Телефон (в шапке сайта)</label>
+                    <input
+                      type="text"
+                      value={settings.phone || ''}
+                      onChange={(e) => setSettings(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="+7 965 411-15-55"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
-                  <input
-                    type="text"
-                    value={settings.phone || ''}
-                    onChange={(e) => setSettings(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-blue-600">Главная страница</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Заголовок героя (большой текст на главной)</label>
+                    <input
+                      type="text"
+                      value={settings.heroTitle || ''}
+                      onChange={(e) => setSettings(prev => ({ ...prev, heroTitle: e.target.value }))}
+                      placeholder="Уютные домики и квартиры на берегу каспия"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Подзаголовок героя (описание под заголовком)</label>
+                    <textarea
+                      value={settings.heroSubtitle || ''}
+                      onChange={(e) => setSettings(prev => ({ ...prev, heroSubtitle: e.target.value }))}
+                      placeholder="Отдохните от городской суеты в наших комфортабельных объектах..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Заголовок героя</label>
-                <input
-                  type="text"
-                  value={settings.heroTitle || ''}
-                  onChange={(e) => setSettings(prev => ({ ...prev, heroTitle: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Подзаголовок героя</label>
-                <textarea
-                  value={settings.heroSubtitle || ''}
-                  onChange={(e) => setSettings(prev => ({ ...prev, heroSubtitle: e.target.value }))}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
+                <h3 className="text-lg font-semibold mb-4 text-blue-600">Галерея на главной странице</h3>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Галерея изображений {uploadingImages.length > 0 && `(Загружается: ${uploadingImages.length})`}
+                  Изображения галереи {uploadingImages.length > 0 && `(Загружается: ${uploadingImages.length})`}
                 </label>
                 <FileUpload
                   onFileSelect={(files) => handleMultipleFileUpload(files, 'gallery')}
@@ -594,6 +736,64 @@ const AdminPage: React.FC = () => {
                 </div>
               </div>
 
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-blue-600">Раздел "Почему выбирают нас"</h3>
+                <div className="space-y-4">
+                  {(settings.whyChooseUsFeatures || []).map((feature, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Заголовок</label>
+                          <input
+                            type="text"
+                            value={feature.title}
+                            onChange={(e) => {
+                              const newFeatures = [...(settings.whyChooseUsFeatures || [])];
+                              newFeatures[index] = { ...feature, title: e.target.value };
+                              setSettings(prev => ({ ...prev, whyChooseUsFeatures: newFeatures }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <button
+                            onClick={() => {
+                              const newFeatures = (settings.whyChooseUsFeatures || []).filter((_, i) => i !== index);
+                              setSettings(prev => ({ ...prev, whyChooseUsFeatures: newFeatures }));
+                            }}
+                            className="px-3 py-2 text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Описание</label>
+                        <textarea
+                          value={feature.description}
+                          onChange={(e) => {
+                            const newFeatures = [...(settings.whyChooseUsFeatures || [])];
+                            newFeatures[index] = { ...feature, description: e.target.value };
+                            setSettings(prev => ({ ...prev, whyChooseUsFeatures: newFeatures }));
+                          }}
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      const newFeatures = [...(settings.whyChooseUsFeatures || []), { title: '', description: '' }];
+                      setSettings(prev => ({ ...prev, whyChooseUsFeatures: newFeatures }));
+                    }}
+                    className="text-blue-600 hover:text-blue-800 text-sm"
+                  >
+                    + Добавить преимущество
+                  </button>
+                </div>
+              </div>
+
               <button
                 onClick={handleSaveSettings}
                 className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -613,7 +813,7 @@ const AdminPage: React.FC = () => {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Заголовок</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Заголовок страницы</label>
                   <input
                     type="text"
                     value={settings.contactInfo?.title || ''}
@@ -621,6 +821,7 @@ const AdminPage: React.FC = () => {
                       ...prev,
                       contactInfo: { ...prev.contactInfo, title: e.target.value }
                     }))}
+                    placeholder="Контакты"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -634,6 +835,7 @@ const AdminPage: React.FC = () => {
                       ...prev,
                       contactInfo: { ...prev.contactInfo, subtitle: e.target.value }
                     }))}
+                    placeholder="Свяжитесь с нами любым удобным способом"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -647,6 +849,7 @@ const AdminPage: React.FC = () => {
                       ...prev,
                       contactInfo: { ...prev.contactInfo, phone: e.target.value }
                     }))}
+                    placeholder="+7 965 411-15-55"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -660,6 +863,7 @@ const AdminPage: React.FC = () => {
                       ...prev,
                       contactInfo: { ...prev.contactInfo, email: e.target.value }
                     }))}
+                    placeholder="info@vgosti.ru"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -673,6 +877,7 @@ const AdminPage: React.FC = () => {
                       ...prev,
                       contactInfo: { ...prev.contactInfo, whatsapp: e.target.value }
                     }))}
+                    placeholder="+79654111555"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -686,6 +891,7 @@ const AdminPage: React.FC = () => {
                       ...prev,
                       contactInfo: { ...prev.contactInfo, telegram: e.target.value }
                     }))}
+                    placeholder="@vgosti_support"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -699,6 +905,7 @@ const AdminPage: React.FC = () => {
                     ...prev,
                     contactInfo: { ...prev.contactInfo, address: e.target.value }
                   }))}
+                  placeholder="Приморский бульвар, 123, Морской город, Россия"
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -711,6 +918,64 @@ const AdminPage: React.FC = () => {
                 <Save className="w-4 h-4 mr-2" />
                 Сохранить настройки
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Reviews Tab */}
+        {activeTab === 'reviews' && (
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Управление отзывами</h2>
+            
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <div key={review.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">{review.name}</h3>
+                      <p className="text-gray-600 text-sm">{review.email}</p>
+                      <div className="flex items-center mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                          />
+                        ))}
+                        <span className="ml-2 text-sm text-gray-600">
+                          {new Date(review.created_at).toLocaleDateString('ru-RU')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2 py-1 text-xs rounded ${review.approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {review.approved ? 'Одобрен' : 'На модерации'}
+                      </span>
+                      <button
+                        onClick={() => handleApproveReview(review.id, !review.approved)}
+                        className={`p-2 rounded-lg ${review.approved ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
+                        title={review.approved ? 'Скрыть отзыв' : 'Одобрить отзыв'}
+                      >
+                        {review.approved ? <EyeOff className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteReview(review.id)}
+                        className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                        title="Удалить отзыв"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-gray-700">{review.comment}</p>
+                </div>
+              ))}
+              
+              {reviews.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>Отзывов пока нет</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -789,7 +1054,7 @@ const AdminPage: React.FC = () => {
                   </div>
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
-                  ⚠️ После изменения ссылки, админка будет доступна только по новому адресу!
+                  ⚠️ После изменения ссылки, старая ссылка перестанет работать!
                 </p>
               </div>
             </div>

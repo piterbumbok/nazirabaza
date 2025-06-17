@@ -14,10 +14,21 @@ export interface ApiCabin {
   amenities: string[];
   images: string[];
   featured: boolean;
+  active?: boolean;
 }
 
 export interface ApiSettings {
   [key: string]: any;
+}
+
+export interface ApiReview {
+  id: string;
+  name: string;
+  email: string;
+  rating: number;
+  comment: string;
+  approved: boolean;
+  created_at: string;
 }
 
 class ApiService {
@@ -102,6 +113,35 @@ class ApiService {
     return this.request('/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
+    });
+  }
+
+  // Reviews
+  async getReviews(): Promise<ApiReview[]> {
+    return this.request('/reviews');
+  }
+
+  async getApprovedReviews(): Promise<ApiReview[]> {
+    return this.request('/reviews/approved');
+  }
+
+  async createReview(review: { name: string; email: string; rating: number; comment: string }): Promise<ApiReview> {
+    return this.request('/reviews', {
+      method: 'POST',
+      body: JSON.stringify(review),
+    });
+  }
+
+  async updateReview(id: string, updates: { approved?: boolean }): Promise<ApiReview> {
+    return this.request(`/reviews/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteReview(id: string): Promise<void> {
+    return this.request(`/reviews/${id}`, {
+      method: 'DELETE',
     });
   }
 
