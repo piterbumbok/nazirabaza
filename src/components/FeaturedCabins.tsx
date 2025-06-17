@@ -1,11 +1,43 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { cabins } from '../data/cabins';
+import { useCabins } from '../hooks/useCabins';
 import CabinCard from './CabinCard';
 
 const FeaturedCabins: React.FC = () => {
   const navigate = useNavigate();
+  const { cabins, loading, error } = useCabins();
+  
   const displayCabins = cabins.slice(0, 6);
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Ошибка загрузки: {error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Попробовать снова
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 bg-gray-50">

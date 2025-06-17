@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import LoginForm from '../components/LoginForm';
 import FileUpload from '../components/FileUpload';
-import { cabins } from '../data/cabins';
+import { useCabins } from '../hooks/useCabins';
+import { apiService } from '../services/api';
 import { Cabin } from '../types';
 import { X, Plus, Edit, Trash, Settings, Phone, Mail, MapPin, Image, Key, Save, Globe, FileText } from 'lucide-react';
 
@@ -35,9 +36,10 @@ interface AdminCredentials {
 const AdminPage: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<'cabins' | 'settings' | 'gallery' | 'credentials' | 'content'>('cabins');
-  const [cabinsList, setCabinsList] = useState<Cabin[]>(cabins);
+  const { cabins, loading, addCabin, updateCabin, deleteCabin } = useCabins();
   const [isAddingCabin, setIsAddingCabin] = useState(false);
   const [editingCabin, setEditingCabin] = useState<Cabin | null>(null);
+  const [saving, setSaving] = useState(false);
   
   const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>({
     username: 'admin',
@@ -105,23 +107,46 @@ const AdminPage: React.FC = () => {
   const [newAmenity, setNewAmenity] = useState('');
   const [newRule, setNewRule] = useState('');
 
-  const handleLogin = (username: string, password: string): boolean => {
-    if (username === adminCredentials.username && password === adminCredentials.password) {
-      setIsAuthenticated(true);
-      return true;
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await apiService.getSettings();
+        if (Object.keys(settings).length > 0) {
+          setSiteSettings(prev => ({ ...prev, ...settings }));
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    };
+
+    if (isAuthenticated) {
+      loadSettings();
     }
-    return false;
+  }, [isAuthenticated]);
+
+  const handleLogin = async (username: string, password: string): Promise<boolean> => {
+    try {
+      const result = await apiService.login(username, password);
+      if (result.success) {
+        setIsAuthenticated(true);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    }
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
   };
 
-  const handleFileUpload = (file: File, type: 'cabin' | 'gallery') => {
-    // Simulate file upload - in real app, this would upload to server
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const imageUrl = e.target?.result as string;
+  const handleFileUpload = async (file: File, type: 'cabin' | 'gallery') => {
+    try {
+      const result = await apiService.uploadImage(file);
+      const imageUrl = `${window.location.origin}${result.imageUrl}`;
       
       if (type === 'cabin') {
         setNewCabin({
@@ -134,40 +159,43 @@ const AdminPage: React.FC = () => {
           galleryImages: [...siteSettings.galleryImages, imageUrl]
         });
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Ошибка загрузки файла');
+    }
   };
 
-  const handleAddCabin = () => {
-    if (editingCabin) {
-      setCabinsList(cabinsList.map(cabin => 
-        cabin.id === editingCabin.id 
-          ? { ...cabin, ...newCabin } as Cabin 
-          : cabin
-      ));
-      setEditingCabin(null);
-    } else {
-      const cabin: Cabin = {
-        id: Date.now().toString(),
-        ...newCabin as Omit<Cabin, 'id'>
-      };
-      setCabinsList([...cabinsList, cabin]);
+  const handleAddCabin = async () => {
+    try {
+      setSaving(true);
+      if (editingCabin) {
+        await updateCabin(editingCabin.id, newCabin as Omit<Cabin, 'id'>);
+        setEditingCabin(null);
+      } else {
+        await addCabin(newCabin as Omit<Cabin, 'id'>);
+      }
+      
+      setNewCabin({
+        name: '',
+        description: '',
+        pricePerNight: 0,
+        location: 'Побережье Каспийского моря',
+        bedrooms: 1,
+        bathrooms: 1,
+        maxGuests: 2,
+        amenities: [],
+        images: [],
+        featured: false
+      });
+      
+      setIsAddingCabin(false);
+      alert('Домик успешно сохранен!');
+    } catch (error) {
+      console.error('Error saving cabin:', error);
+      alert('Ошибка сохранения домика');
+    } finally {
+      setSaving(false);
     }
-    
-    setNewCabin({
-      name: '',
-      description: '',
-      pricePerNight: 0,
-      location: 'Побережье Каспийского моря',
-      bedrooms: 1,
-      bathrooms: 1,
-      maxGuests: 2,
-      amenities: [],
-      images: [],
-      featured: false
-    });
-    
-    setIsAddingCabin(false);
   };
 
   const handleEditCabin = (cabin: Cabin) => {
@@ -176,8 +204,16 @@ const AdminPage: React.FC = () => {
     setIsAddingCabin(true);
   };
 
-  const handleDeleteCabin = (id: string) => {
-    setCabinsList(cabinsList.filter(cabin => cabin.id !== id));
+  const handleDeleteCabin = async (id: string) => {
+    if (confirm('Вы уверены, что хотите удалить этот домик?')) {
+      try {
+        await deleteCabin(id);
+        alert('Домик успешно удален!');
+      } catch (error) {
+        console.error('Error deleting cabin:', error);
+        alert('Ошибка удаления домика');
+      }
+    }
   };
 
   const handleAddAmenity = () => {
@@ -211,14 +247,35 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const handleSaveCredentials = () => {
-    // In a real app, this would save to a secure backend
-    alert('Учетные данные сохранены!');
+  const handleSaveCredentials = async () => {
+    try {
+      setSaving(true);
+      await apiService.updateCredentials(adminCredentials.username, adminCredentials.password);
+      alert('Учетные данные сохранены! Войдите заново с новыми данными.');
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Error saving credentials:', error);
+      alert('Ошибка сохранения учетных данных');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSaveSettings = () => {
-    // In a real app, this would save to backend
-    alert('Настройки сохранены!');
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      const settingsToSave = {
+        ...siteSettings,
+        whyChooseUsFeatures
+      };
+      await apiService.updateSettings(settingsToSave);
+      alert('Настройки сохранены!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Ошибка сохранения настроек');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleUpdateWhyChooseUsFeature = (index: number, field: 'title' | 'description', value: string) => {
@@ -315,78 +372,84 @@ const AdminPage: React.FC = () => {
                 </button>
               </div>
               
-              <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Название
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Цена/ночь
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Спальни
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Популярный
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Действия
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {cabinsList.map((cabin) => (
-                      <tr key={cabin.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="h-12 w-12 rounded-lg overflow-hidden mr-4">
-                              <img
-                                src={cabin.images[0]}
-                                alt={cabin.name}
-                                className="h-full w-full object-cover"
-                              />
-                            </div>
-                            <div className="text-sm font-medium text-gray-900">{cabin.name}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {cabin.pricePerNight} ₽
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {cabin.bedrooms}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <span
-                            className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                              cabin.featured
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}
-                          >
-                            {cabin.featured ? 'Да' : 'Нет'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => handleEditCabin(cabin)}
-                            className="text-blue-600 hover:text-blue-900 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCabin(cabin.id)}
-                            className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash className="w-5 h-5" />
-                          </button>
-                        </td>
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Название
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Цена/ночь
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Спальни
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Популярный
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Действия
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {cabins.map((cabin) => (
+                        <tr key={cabin.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-12 w-12 rounded-lg overflow-hidden mr-4">
+                                <img
+                                  src={cabin.images[0]}
+                                  alt={cabin.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                              <div className="text-sm font-medium text-gray-900">{cabin.name}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {cabin.pricePerNight} ₽
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {cabin.bedrooms}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span
+                              className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                                cabin.featured
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {cabin.featured ? 'Да' : 'Нет'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => handleEditCabin(cabin)}
+                              className="text-blue-600 hover:text-blue-900 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCabin(cabin.id)}
+                              className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash className="w-5 h-5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -566,10 +629,11 @@ const AdminPage: React.FC = () => {
               <div className="text-center">
                 <button 
                   onClick={handleSaveSettings}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center mx-auto"
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center mx-auto disabled:opacity-50"
                 >
                   <Save className="w-5 h-5 mr-2" />
-                  Сохранить все изменения
+                  {saving ? 'Сохранение...' : 'Сохранить все изменения'}
                 </button>
               </div>
             </div>
@@ -640,10 +704,11 @@ const AdminPage: React.FC = () => {
               <div className="mt-8 pt-6 border-t border-gray-200">
                 <button 
                   onClick={handleSaveSettings}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center"
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center disabled:opacity-50"
                 >
                   <Save className="w-5 h-5 mr-2" />
-                  Сохранить настройки
+                  {saving ? 'Сохранение...' : 'Сохранить настройки'}
                 </button>
               </div>
             </div>
@@ -715,10 +780,11 @@ const AdminPage: React.FC = () => {
 
                 <button
                   onClick={handleSaveCredentials}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center"
+                  disabled={saving}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center disabled:opacity-50"
                 >
                   <Save className="w-5 h-5 mr-2" />
-                  Сохранить учетные данные
+                  {saving ? 'Сохранение...' : 'Сохранить учетные данные'}
                 </button>
 
                 <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -927,9 +993,10 @@ const AdminPage: React.FC = () => {
                 </button>
                 <button
                   onClick={handleAddCabin}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors shadow-lg"
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors shadow-lg disabled:opacity-50"
                 >
-                  {editingCabin ? 'Сохранить изменения' : 'Добавить домик'}
+                  {saving ? 'Сохранение...' : (editingCabin ? 'Сохранить изменения' : 'Добавить домик')}
                 </button>
               </div>
             </div>

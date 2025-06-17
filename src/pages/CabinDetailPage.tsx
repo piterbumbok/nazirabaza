@@ -1,28 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams } from 'react-router-dom';
 import { MapPin, Home, Bath, Users, Award } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import PhotoGallery from '../components/PhotoGallery';
 import BookingForm from '../components/BookingForm';
-import { cabins } from '../data/cabins';
-import { Cabin } from '../types';
+import { useCabin } from '../hooks/useCabins';
 
 const CabinDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [cabin, setCabin] = useState<Cabin | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate API fetch
-    setLoading(true);
-    const foundCabin = cabins.find(c => c.id === id);
-    
-    setTimeout(() => {
-      setCabin(foundCabin || null);
-      setLoading(false);
-    }, 500);
-  }, [id]);
+  const { cabin, loading, error } = useCabin(id || '');
 
   if (loading) {
     return (
@@ -36,14 +23,14 @@ const CabinDetailPage: React.FC = () => {
     );
   }
 
-  if (!cabin) {
+  if (error || !cabin) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
         <Header phone="+7 965 411-15-55" />
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center p-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Объект не найден</h2>
-            <p className="text-gray-600">Извините, запрашиваемый объект не существует.</p>
+            <p className="text-gray-600 mb-4">{error || 'Извините, запрашиваемый объект не существует.'}</p>
             <a href="/" className="mt-6 inline-block bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition-colors">
               Вернуться на главную
             </a>

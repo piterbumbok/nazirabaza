@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { cabins } from '../data/cabins';
+import { useCabins } from '../hooks/useCabins';
 import CabinCard from '../components/CabinCard';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const CabinsListPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const cabinsPerPage = 12;
+  const { cabins, loading, error } = useCabins();
   
   const totalPages = Math.ceil(cabins.length / cabinsPerPage);
   const startIndex = (currentPage - 1) * cabinsPerPage;
@@ -77,6 +78,38 @@ const CabinsListPage: React.FC = () => {
 
     return buttons;
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header phone="+7 965 411-15-55" />
+        <main className="flex-grow pt-20 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header phone="+7 965 411-15-55" />
+        <main className="flex-grow pt-20 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Ошибка загрузки: {error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Попробовать снова
+            </button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
