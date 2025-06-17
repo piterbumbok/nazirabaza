@@ -92,6 +92,15 @@ async function initDatabase() {
         )
       `);
 
+      // Create admin path table for custom admin URL
+      db.run(`
+        CREATE TABLE IF NOT EXISTS admin_path (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          path TEXT UNIQUE NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
       // Insert default admin credentials if not exists
       db.get('SELECT * FROM admin_credentials WHERE username = ?', ['admin'], (err, row) => {
         if (err) {
@@ -102,6 +111,20 @@ async function initDatabase() {
           db.run(
             'INSERT INTO admin_credentials (username, password) VALUES (?, ?)',
             ['admin', 'admin123']
+          );
+        }
+      });
+
+      // Insert default admin path if not exists
+      db.get('SELECT * FROM admin_path WHERE path = ?', ['admin'], (err, row) => {
+        if (err) {
+          console.error('Error checking admin path:', err);
+          return;
+        }
+        if (!row) {
+          db.run(
+            'INSERT INTO admin_path (path) VALUES (?)',
+            ['admin']
           );
         }
       });
@@ -408,6 +431,38 @@ app.put('/api/admin/credentials', (req, res) => {
       return res.status(500).json({ error: 'Internal server error' });
     }
     res.json({ success: true, message: 'Credentials updated successfully' });
+  });
+});
+
+// Get admin path
+app.get('/api/admin/path', (req, res) => {
+  db.get('SELECT path FROM admin_path ORDER BY id DESC LIMIT 1', (err, row) => {
+    if (err) {
+      console.error('Error fetching admin path:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.json({ path: row ? row.path : 'admin' });
+  });
+});
+
+// Update admin path
+app.put('/api/admin/path', (req, res) => {
+  const { path } = req.body;
+  
+  // Delete old path and insert new one
+  db.run('DELETE FROM admin_path', (err) => {
+    if (err) {
+      console.error('Error deleting old admin path:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    db.run('INSERT INTO admin_path (path) VALUES (?)', [path], (err) => {
+      if (err) {
+        console.error('Error updating admin path:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      res.json({ success: true, message: 'Admin path updated successfully' });
+    });
   });
 });
 

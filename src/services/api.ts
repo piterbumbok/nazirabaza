@@ -82,6 +82,17 @@ class ApiService {
     });
   }
 
+  async getAdminPath(): Promise<{ path: string }> {
+    return this.request('/admin/path');
+  }
+
+  async updateAdminPath(path: string): Promise<{ success: boolean; message: string }> {
+    return this.request('/admin/path', {
+      method: 'PUT',
+      body: JSON.stringify({ path }),
+    });
+  }
+
   // Settings
   async getSettings(): Promise<ApiSettings> {
     return this.request('/settings');

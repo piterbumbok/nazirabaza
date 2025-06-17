@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import LoginForm from '../components/LoginForm';
@@ -6,7 +7,7 @@ import FileUpload from '../components/FileUpload';
 import { useCabins } from '../hooks/useCabins';
 import { apiService } from '../services/api';
 import { Cabin } from '../types';
-import { X, Plus, Edit, Trash, Settings, Phone, Mail, MapPin, Image, Key, Save, Globe, FileText, Users, Info } from 'lucide-react';
+import { X, Plus, Edit, Trash, Settings, Phone, Mail, MapPin, Image, Key, Save, Globe, FileText, Users, Award, Clock } from 'lucide-react';
 
 interface SiteSettings {
   siteName: string;
@@ -21,8 +22,6 @@ interface SiteSettings {
   footerEmail: string;
   footerAddress: string;
   accommodationRules: string[];
-  aboutContent: any;
-  contactInfo: any;
 }
 
 interface WhyChooseUsFeature {
@@ -35,14 +34,58 @@ interface AdminCredentials {
   password: string;
 }
 
+interface AboutContent {
+  title: string;
+  subtitle: string;
+  description: string;
+  mission: string;
+  vision: string;
+  values: string[];
+  stats: {
+    yearsExperience: number;
+    happyGuests: number;
+    properties: number;
+    locations: number;
+  };
+  team: {
+    name: string;
+    position: string;
+    description: string;
+    image: string;
+  }[];
+}
+
+interface ContactInfo {
+  title: string;
+  subtitle: string;
+  phone: string;
+  email: string;
+  address: string;
+  workingHours: string;
+  whatsapp: string;
+  telegram: string;
+  socialMedia: {
+    facebook: string;
+    instagram: string;
+    vk: string;
+  };
+  officeHours: {
+    weekdays: string;
+    weekends: string;
+  };
+}
+
 const AdminPage: React.FC = () => {
+  const { adminPath } = useParams();
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'cabins' | 'about' | 'contacts' | 'settings' | 'gallery' | 'credentials' | 'content'>('cabins');
+  const [activeTab, setActiveTab] = useState<'cabins' | 'content' | 'about' | 'contacts' | 'settings' | 'gallery' | 'credentials'>('cabins');
   const { cabins, loading, addCabin, updateCabin, deleteCabin } = useCabins();
   const [isAddingCabin, setIsAddingCabin] = useState(false);
   const [editingCabin, setEditingCabin] = useState<Cabin | null>(null);
   const [saving, setSaving] = useState(false);
-  const [customAdminPath, setCustomAdminPath] = useState('admin');
+  const [currentAdminPath, setCurrentAdminPath] = useState('admin');
+  const [newAdminPath, setNewAdminPath] = useState('');
   
   const [adminCredentials, setAdminCredentials] = useState<AdminCredentials>({
     username: 'admin',
@@ -72,28 +115,60 @@ const AdminPage: React.FC = () => {
       'Курение запрещено',
       'Без вечеринок и мероприятий',
       'Разрешено проживание с домашними животными'
+    ]
+  });
+
+  const [aboutContent, setAboutContent] = useState<AboutContent>({
+    title: 'О нас',
+    subtitle: 'Ваш идеальный отдых на берегу Каспийского моря',
+    description: 'Мы предлагаем уникальные возможности для отдыха в живописных местах на побережье Каспийского моря. Наша компания специализируется на предоставлении комфортабельного жилья для незабываемого отдыха.',
+    mission: 'Наша миссия - создавать незабываемые впечатления для наших гостей, предоставляя им комфортное и качественное размещение в самых красивых уголках побережья.',
+    vision: 'Мы стремимся стать ведущей компанией в сфере краткосрочной аренды жилья, известной своим высоким уровнем сервиса и заботой о каждом госте.',
+    values: [
+      'Качество и комфорт',
+      'Индивидуальный подход',
+      'Честность и прозрачность',
+      'Забота об окружающей среде'
     ],
-    aboutContent: {
-      title: 'О нас',
-      subtitle: 'Ваш идеальный отдых на берегу Каспийского моря',
-      description: 'Мы предлагаем уникальные возможности для отдыха в живописных местах на побережье Каспийского моря.',
-      mission: 'Наша миссия - создавать незабываемые впечатления для наших гостей.',
-      vision: 'Мы стремимся стать ведущей компанией в сфере краткосрочной аренды жилья.',
-      values: ['Качество и комфорт', 'Индивидуальный подход', 'Честность и прозрачность', 'Забота об окружающей среде'],
-      stats: { yearsExperience: 5, happyGuests: 1200, properties: 15, locations: 3 },
-      team: [
-        { name: 'Анна Петрова', position: 'Основатель и директор', description: 'Более 10 лет опыта в сфере гостеприимства', image: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg' }
-      ]
+    stats: {
+      yearsExperience: 5,
+      happyGuests: 1200,
+      properties: 15,
+      locations: 3
     },
-    contactInfo: {
-      title: 'Контакты',
-      subtitle: 'Свяжитесь с нами любым удобным способом',
-      phone: '+7 965 411-15-55',
-      email: 'info@vgosti.ru',
-      address: 'Приморский бульвар, 123, Морской город, Россия',
-      whatsapp: '+79654111555',
-      telegram: '@vgosti_support',
-      officeHours: { weekdays: 'Пн-Пт: 9:00 - 18:00', weekends: 'Сб-Вс: 10:00 - 16:00' }
+    team: [
+      {
+        name: 'Анна Петрова',
+        position: 'Основатель и директор',
+        description: 'Более 10 лет опыта в сфере гостеприимства',
+        image: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg'
+      },
+      {
+        name: 'Михаил Сидоров',
+        position: 'Менеджер по развитию',
+        description: 'Отвечает за развитие новых направлений',
+        image: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg'
+      }
+    ]
+  });
+
+  const [contactInfo, setContactInfo] = useState<ContactInfo>({
+    title: 'Контакты',
+    subtitle: 'Свяжитесь с нами любым удобным способом',
+    phone: '+7 965 411-15-55',
+    email: 'info@vgosti.ru',
+    address: 'Приморский бульвар, 123, Морской город, Россия',
+    workingHours: 'Ежедневно с 9:00 до 21:00',
+    whatsapp: '+79654111555',
+    telegram: '@vgosti_support',
+    socialMedia: {
+      facebook: 'https://facebook.com/vgosti',
+      instagram: 'https://instagram.com/vgosti',
+      vk: 'https://vk.com/vgosti'
+    },
+    officeHours: {
+      weekdays: 'Пн-Пт: 9:00 - 18:00',
+      weekends: 'Сб-Вс: 10:00 - 16:00'
     }
   });
 
@@ -131,24 +206,35 @@ const AdminPage: React.FC = () => {
   
   const [newAmenity, setNewAmenity] = useState('');
   const [newRule, setNewRule] = useState('');
+  const [newValue, setNewValue] = useState('');
+  const [newTeamMember, setNewTeamMember] = useState({
+    name: '',
+    position: '',
+    description: '',
+    image: ''
+  });
 
-  // Check if current path matches admin path
+  // Check if current path is valid admin path
   useEffect(() => {
-    const currentPath = window.location.pathname.slice(1); // Remove leading slash
-    if (currentPath && currentPath !== 'admin') {
-      setCustomAdminPath(currentPath);
-    }
-  }, []);
-
-  // Auto-logout on page refresh
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      setIsAuthenticated(false);
+    const checkAdminPath = async () => {
+      try {
+        const response = await apiService.getAdminPath();
+        const validPath = response.path;
+        setCurrentAdminPath(validPath);
+        
+        const currentPath = adminPath || 'admin';
+        if (currentPath !== validPath) {
+          // Redirect to correct admin path
+          navigate(`/${validPath}`);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking admin path:', error);
+      }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
+    checkAdminPath();
+  }, [adminPath, navigate]);
 
   // Load settings on component mount
   useEffect(() => {
@@ -156,9 +242,17 @@ const AdminPage: React.FC = () => {
       try {
         const settings = await apiService.getSettings();
         if (Object.keys(settings).length > 0) {
-          setSiteSettings(prev => ({ ...prev, ...settings }));
-          if (settings.customAdminPath) {
-            setCustomAdminPath(settings.customAdminPath);
+          if (settings.siteSettings) {
+            setSiteSettings(prev => ({ ...prev, ...settings.siteSettings }));
+          }
+          if (settings.aboutContent) {
+            setAboutContent(prev => ({ ...prev, ...settings.aboutContent }));
+          }
+          if (settings.contactInfo) {
+            setContactInfo(prev => ({ ...prev, ...settings.contactInfo }));
+          }
+          if (settings.whyChooseUsFeatures) {
+            setWhyChooseUsFeatures(settings.whyChooseUsFeatures);
           }
         }
       } catch (error) {
@@ -189,7 +283,7 @@ const AdminPage: React.FC = () => {
     setIsAuthenticated(false);
   };
 
-  const handleFileUpload = async (file: File, type: 'cabin' | 'gallery') => {
+  const handleFileUpload = async (file: File, type: 'cabin' | 'gallery' | 'team') => {
     try {
       const result = await apiService.uploadImage(file);
       const imageUrl = `${window.location.origin}${result.imageUrl}`;
@@ -199,10 +293,15 @@ const AdminPage: React.FC = () => {
           ...newCabin,
           images: [...(newCabin.images || []), imageUrl]
         });
-      } else {
+      } else if (type === 'gallery') {
         setSiteSettings({
           ...siteSettings,
           galleryImages: [...siteSettings.galleryImages, imageUrl]
+        });
+      } else if (type === 'team') {
+        setNewTeamMember({
+          ...newTeamMember,
+          image: imageUrl
         });
       }
     } catch (error) {
@@ -297,15 +396,7 @@ const AdminPage: React.FC = () => {
     try {
       setSaving(true);
       await apiService.updateCredentials(adminCredentials.username, adminCredentials.password);
-      
-      // Save custom admin path
-      const settingsToSave = {
-        ...siteSettings,
-        customAdminPath
-      };
-      await apiService.updateSettings(settingsToSave);
-      
-      alert('Учетные данные и путь админки сохранены! Войдите заново с новыми данными.');
+      alert('Учетные данные сохранены! Войдите заново с новыми данными.');
       setIsAuthenticated(false);
     } catch (error) {
       console.error('Error saving credentials:', error);
@@ -315,13 +406,36 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const handleSaveAdminPath = async () => {
+    if (!newAdminPath.trim()) {
+      alert('Введите новый путь для админки');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await apiService.updateAdminPath(newAdminPath);
+      alert(`Путь админки изменен! Новая ссылка: ${window.location.origin}/${newAdminPath}`);
+      setCurrentAdminPath(newAdminPath);
+      setNewAdminPath('');
+      // Redirect to new admin path
+      navigate(`/${newAdminPath}`);
+    } catch (error) {
+      console.error('Error saving admin path:', error);
+      alert('Ошибка сохранения пути админки');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
       const settingsToSave = {
-        ...siteSettings,
-        whyChooseUsFeatures,
-        customAdminPath
+        siteSettings,
+        aboutContent,
+        contactInfo,
+        whyChooseUsFeatures
       };
       await apiService.updateSettings(settingsToSave);
       alert('Настройки сохранены!');
@@ -365,6 +479,45 @@ const AdminPage: React.FC = () => {
     });
   };
 
+  const handleAddValue = () => {
+    if (newValue.trim() && !aboutContent.values.includes(newValue)) {
+      setAboutContent({
+        ...aboutContent,
+        values: [...aboutContent.values, newValue]
+      });
+      setNewValue('');
+    }
+  };
+
+  const handleRemoveValue = (value: string) => {
+    setAboutContent({
+      ...aboutContent,
+      values: aboutContent.values.filter(v => v !== value)
+    });
+  };
+
+  const handleAddTeamMember = () => {
+    if (newTeamMember.name.trim() && newTeamMember.position.trim()) {
+      setAboutContent({
+        ...aboutContent,
+        team: [...aboutContent.team, newTeamMember]
+      });
+      setNewTeamMember({
+        name: '',
+        position: '',
+        description: '',
+        image: ''
+      });
+    }
+  };
+
+  const handleRemoveTeamMember = (index: number) => {
+    setAboutContent({
+      ...aboutContent,
+      team: aboutContent.team.filter((_, i) => i !== index)
+    });
+  };
+
   if (!isAuthenticated) {
     return <LoginForm onLogin={handleLogin} />;
   }
@@ -388,20 +541,20 @@ const AdminPage: React.FC = () => {
           {/* Tabs */}
           <div className="bg-white rounded-lg shadow-md mb-8">
             <div className="border-b border-gray-200">
-              <nav className="flex space-x-8 px-6 overflow-x-auto">
+              <nav className="flex space-x-8 px-6">
                 {[
                   { id: 'cabins', label: 'Домики', icon: <Settings className="w-5 h-5" /> },
                   { id: 'content', label: 'Контент сайта', icon: <Globe className="w-5 h-5" /> },
-                  { id: 'about', label: 'О нас', icon: <Info className="w-5 h-5" /> },
-                  { id: 'contacts', label: 'Контакты', icon: <Users className="w-5 h-5" /> },
-                  { id: 'settings', label: 'Настройки', icon: <Phone className="w-5 h-5" /> },
+                  { id: 'about', label: 'О нас', icon: <Users className="w-5 h-5" /> },
+                  { id: 'contacts', label: 'Контакты', icon: <Phone className="w-5 h-5" /> },
+                  { id: 'settings', label: 'Настройки', icon: <Settings className="w-5 h-5" /> },
                   { id: 'gallery', label: 'Галерея', icon: <Image className="w-5 h-5" /> },
                   { id: 'credentials', label: 'Безопасность', icon: <Key className="w-5 h-5" /> }
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                    className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
                       activeTab === tab.id
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -507,313 +660,6 @@ const AdminPage: React.FC = () => {
                   </table>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* About Tab */}
-          {activeTab === 'about' && (
-            <div className="space-y-8">
-              <div className="bg-white rounded-lg shadow-md p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Страница "О нас"</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Заголовок</label>
-                    <input
-                      type="text"
-                      value={siteSettings.aboutContent.title}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        aboutContent: { ...siteSettings.aboutContent, title: e.target.value }
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Подзаголовок</label>
-                    <input
-                      type="text"
-                      value={siteSettings.aboutContent.subtitle}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        aboutContent: { ...siteSettings.aboutContent, subtitle: e.target.value }
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <label className="block text-gray-700 text-sm font-bold mb-2">Описание</label>
-                  <textarea
-                    value={siteSettings.aboutContent.description}
-                    onChange={(e) => setSiteSettings({
-                      ...siteSettings,
-                      aboutContent: { ...siteSettings.aboutContent, description: e.target.value }
-                    })}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Миссия</label>
-                    <textarea
-                      value={siteSettings.aboutContent.mission}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        aboutContent: { ...siteSettings.aboutContent, mission: e.target.value }
-                      })}
-                      rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Видение</label>
-                    <textarea
-                      value={siteSettings.aboutContent.vision}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        aboutContent: { ...siteSettings.aboutContent, vision: e.target.value }
-                      })}
-                      rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Statistics */}
-                <div className="mt-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Статистика</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-gray-700 text-sm font-bold mb-2">Лет опыта</label>
-                      <input
-                        type="number"
-                        value={siteSettings.aboutContent.stats.yearsExperience}
-                        onChange={(e) => setSiteSettings({
-                          ...siteSettings,
-                          aboutContent: {
-                            ...siteSettings.aboutContent,
-                            stats: { ...siteSettings.aboutContent.stats, yearsExperience: Number(e.target.value) }
-                          }
-                        })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-700 text-sm font-bold mb-2">Довольных гостей</label>
-                      <input
-                        type="number"
-                        value={siteSettings.aboutContent.stats.happyGuests}
-                        onChange={(e) => setSiteSettings({
-                          ...siteSettings,
-                          aboutContent: {
-                            ...siteSettings.aboutContent,
-                            stats: { ...siteSettings.aboutContent.stats, happyGuests: Number(e.target.value) }
-                          }
-                        })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-700 text-sm font-bold mb-2">Объектов</label>
-                      <input
-                        type="number"
-                        value={siteSettings.aboutContent.stats.properties}
-                        onChange={(e) => setSiteSettings({
-                          ...siteSettings,
-                          aboutContent: {
-                            ...siteSettings.aboutContent,
-                            stats: { ...siteSettings.aboutContent.stats, properties: Number(e.target.value) }
-                          }
-                        })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-700 text-sm font-bold mb-2">Локаций</label>
-                      <input
-                        type="number"
-                        value={siteSettings.aboutContent.stats.locations}
-                        onChange={(e) => setSiteSettings({
-                          ...siteSettings,
-                          aboutContent: {
-                            ...siteSettings.aboutContent,
-                            stats: { ...siteSettings.aboutContent.stats, locations: Number(e.target.value) }
-                          }
-                        })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-center">
-                <button 
-                  onClick={handleSaveSettings}
-                  disabled={saving}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center mx-auto disabled:opacity-50"
-                >
-                  <Save className="w-5 h-5 mr-2" />
-                  {saving ? 'Сохранение...' : 'Сохранить изменения'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Contacts Tab */}
-          {activeTab === 'contacts' && (
-            <div className="space-y-8">
-              <div className="bg-white rounded-lg shadow-md p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Страница "Контакты"</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Заголовок</label>
-                    <input
-                      type="text"
-                      value={siteSettings.contactInfo.title}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        contactInfo: { ...siteSettings.contactInfo, title: e.target.value }
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Подзаголовок</label>
-                    <input
-                      type="text"
-                      value={siteSettings.contactInfo.subtitle}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        contactInfo: { ...siteSettings.contactInfo, subtitle: e.target.value }
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Телефон</label>
-                    <input
-                      type="text"
-                      value={siteSettings.contactInfo.phone}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        contactInfo: { ...siteSettings.contactInfo, phone: e.target.value }
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={siteSettings.contactInfo.email}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        contactInfo: { ...siteSettings.contactInfo, email: e.target.value }
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">WhatsApp</label>
-                    <input
-                      type="text"
-                      value={siteSettings.contactInfo.whatsapp}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        contactInfo: { ...siteSettings.contactInfo, whatsapp: e.target.value }
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Telegram</label>
-                    <input
-                      type="text"
-                      value={siteSettings.contactInfo.telegram}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        contactInfo: { ...siteSettings.contactInfo, telegram: e.target.value }
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <label className="block text-gray-700 text-sm font-bold mb-2">Адрес</label>
-                  <textarea
-                    value={siteSettings.contactInfo.address}
-                    onChange={(e) => setSiteSettings({
-                      ...siteSettings,
-                      contactInfo: { ...siteSettings.contactInfo, address: e.target.value }
-                    })}
-                    rows={3}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Часы работы (будни)</label>
-                    <input
-                      type="text"
-                      value={siteSettings.contactInfo.officeHours.weekdays}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        contactInfo: {
-                          ...siteSettings.contactInfo,
-                          officeHours: { ...siteSettings.contactInfo.officeHours, weekdays: e.target.value }
-                        }
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Часы работы (выходные)</label>
-                    <input
-                      type="text"
-                      value={siteSettings.contactInfo.officeHours.weekends}
-                      onChange={(e) => setSiteSettings({
-                        ...siteSettings,
-                        contactInfo: {
-                          ...siteSettings.contactInfo,
-                          officeHours: { ...siteSettings.contactInfo.officeHours, weekends: e.target.value }
-                        }
-                      })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-center">
-                <button 
-                  onClick={handleSaveSettings}
-                  disabled={saving}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center mx-auto disabled:opacity-50"
-                >
-                  <Save className="w-5 h-5 mr-2" />
-                  {saving ? 'Сохранение...' : 'Сохранить изменения'}
-                </button>
-              </div>
             </div>
           )}
 
@@ -935,7 +781,444 @@ const AdminPage: React.FC = () => {
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center mx-auto disabled:opacity-50"
                 >
                   <Save className="w-5 h-5 mr-2" />
-                  {saving ? 'Сохранение...' : 'Сохранить все изменения'}
+                  {saving ? 'Сохранение...' : 'Сохранить изменения'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* About Tab */}
+          {activeTab === 'about' && (
+            <div className="space-y-8">
+              {/* Basic Info */}
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Основная информация</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Заголовок</label>
+                    <input
+                      type="text"
+                      value={aboutContent.title}
+                      onChange={(e) => setAboutContent({ ...aboutContent, title: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Подзаголовок</label>
+                    <input
+                      type="text"
+                      value={aboutContent.subtitle}
+                      onChange={(e) => setAboutContent({ ...aboutContent, subtitle: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-gray-700 text-sm font-bold mb-2">Описание</label>
+                  <textarea
+                    value={aboutContent.description}
+                    onChange={(e) => setAboutContent({ ...aboutContent, description: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Миссия</label>
+                    <textarea
+                      value={aboutContent.mission}
+                      onChange={(e) => setAboutContent({ ...aboutContent, mission: e.target.value })}
+                      rows={4}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Видение</label>
+                    <textarea
+                      value={aboutContent.vision}
+                      onChange={(e) => setAboutContent({ ...aboutContent, vision: e.target.value })}
+                      rows={4}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Статистика</h2>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Лет опыта</label>
+                    <input
+                      type="number"
+                      value={aboutContent.stats.yearsExperience}
+                      onChange={(e) => setAboutContent({
+                        ...aboutContent,
+                        stats: { ...aboutContent.stats, yearsExperience: Number(e.target.value) }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Довольных гостей</label>
+                    <input
+                      type="number"
+                      value={aboutContent.stats.happyGuests}
+                      onChange={(e) => setAboutContent({
+                        ...aboutContent,
+                        stats: { ...aboutContent.stats, happyGuests: Number(e.target.value) }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Объектов</label>
+                    <input
+                      type="number"
+                      value={aboutContent.stats.properties}
+                      onChange={(e) => setAboutContent({
+                        ...aboutContent,
+                        stats: { ...aboutContent.stats, properties: Number(e.target.value) }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Локаций</label>
+                    <input
+                      type="number"
+                      value={aboutContent.stats.locations}
+                      onChange={(e) => setAboutContent({
+                        ...aboutContent,
+                        stats: { ...aboutContent.stats, locations: Number(e.target.value) }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Values */}
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Наши ценности</h2>
+                
+                <div className="mb-6">
+                  <div className="flex mb-3">
+                    <input
+                      type="text"
+                      value={newValue}
+                      onChange={(e) => setNewValue(e.target.value)}
+                      placeholder="Добавить новую ценность..."
+                      className="flex-grow px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={handleAddValue}
+                      className="bg-blue-600 text-white px-6 py-3 rounded-r-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Добавить
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {aboutContent.values.map((value, index) => (
+                      <div key={index} className="flex items-center bg-gray-50 p-3 rounded-lg">
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={(e) => {
+                            const updatedValues = [...aboutContent.values];
+                            updatedValues[index] = e.target.value;
+                            setAboutContent({ ...aboutContent, values: updatedValues });
+                          }}
+                          className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mr-3"
+                        />
+                        <button
+                          onClick={() => handleRemoveValue(value)}
+                          className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Team */}
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Команда</h2>
+                
+                <div className="mb-6 p-6 border border-gray-200 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-4">Добавить нового сотрудника</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <input
+                      type="text"
+                      value={newTeamMember.name}
+                      onChange={(e) => setNewTeamMember({ ...newTeamMember, name: e.target.value })}
+                      placeholder="Имя"
+                      className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="text"
+                      value={newTeamMember.position}
+                      onChange={(e) => setNewTeamMember({ ...newTeamMember, position: e.target.value })}
+                      placeholder="Должность"
+                      className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <textarea
+                    value={newTeamMember.description}
+                    onChange={(e) => setNewTeamMember({ ...newTeamMember, description: e.target.value })}
+                    placeholder="Описание"
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                  />
+                  <div className="mb-4">
+                    <FileUpload onFileSelect={(file) => handleFileUpload(file, 'team')} />
+                    {newTeamMember.image && (
+                      <img src={newTeamMember.image} alt="Preview" className="w-20 h-20 rounded-full object-cover mt-2" />
+                    )}
+                  </div>
+                  <button
+                    onClick={handleAddTeamMember}
+                    className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Добавить сотрудника
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {aboutContent.team.map((member, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-6">
+                      <img
+                        src={member.image}
+                        alt={member.name}
+                        className="w-20 h-20 rounded-full object-cover mx-auto mb-4"
+                      />
+                      <input
+                        type="text"
+                        value={member.name}
+                        onChange={(e) => {
+                          const updatedTeam = [...aboutContent.team];
+                          updatedTeam[index].name = e.target.value;
+                          setAboutContent({ ...aboutContent, team: updatedTeam });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                      />
+                      <input
+                        type="text"
+                        value={member.position}
+                        onChange={(e) => {
+                          const updatedTeam = [...aboutContent.team];
+                          updatedTeam[index].position = e.target.value;
+                          setAboutContent({ ...aboutContent, team: updatedTeam });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                      />
+                      <textarea
+                        value={member.description}
+                        onChange={(e) => {
+                          const updatedTeam = [...aboutContent.team];
+                          updatedTeam[index].description = e.target.value;
+                          setAboutContent({ ...aboutContent, team: updatedTeam });
+                        }}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                      />
+                      <button
+                        onClick={() => handleRemoveTeamMember(index)}
+                        className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="text-center">
+                <button 
+                  onClick={handleSaveSettings}
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center mx-auto disabled:opacity-50"
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  {saving ? 'Сохранение...' : 'Сохранить изменения'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Contacts Tab */}
+          {activeTab === 'contacts' && (
+            <div className="space-y-8">
+              {/* Basic Contact Info */}
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Основная информация</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Заголовок</label>
+                    <input
+                      type="text"
+                      value={contactInfo.title}
+                      onChange={(e) => setContactInfo({ ...contactInfo, title: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Подзаголовок</label>
+                    <input
+                      type="text"
+                      value={contactInfo.subtitle}
+                      onChange={(e) => setContactInfo({ ...contactInfo, subtitle: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Телефон</label>
+                    <input
+                      type="text"
+                      value={contactInfo.phone}
+                      onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={contactInfo.email}
+                      onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <label className="block text-gray-700 text-sm font-bold mb-2">Адрес</label>
+                  <textarea
+                    value={contactInfo.address}
+                    onChange={(e) => setContactInfo({ ...contactInfo, address: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">WhatsApp</label>
+                    <input
+                      type="text"
+                      value={contactInfo.whatsapp}
+                      onChange={(e) => setContactInfo({ ...contactInfo, whatsapp: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Telegram</label>
+                    <input
+                      type="text"
+                      value={contactInfo.telegram}
+                      onChange={(e) => setContactInfo({ ...contactInfo, telegram: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Working Hours */}
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Часы работы</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Будние дни</label>
+                    <input
+                      type="text"
+                      value={contactInfo.officeHours.weekdays}
+                      onChange={(e) => setContactInfo({
+                        ...contactInfo,
+                        officeHours: { ...contactInfo.officeHours, weekdays: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Выходные</label>
+                    <input
+                      type="text"
+                      value={contactInfo.officeHours.weekends}
+                      onChange={(e) => setContactInfo({
+                        ...contactInfo,
+                        officeHours: { ...contactInfo.officeHours, weekends: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Social Media */}
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Социальные сети</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Facebook</label>
+                    <input
+                      type="url"
+                      value={contactInfo.socialMedia.facebook}
+                      onChange={(e) => setContactInfo({
+                        ...contactInfo,
+                        socialMedia: { ...contactInfo.socialMedia, facebook: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Instagram</label>
+                    <input
+                      type="url"
+                      value={contactInfo.socialMedia.instagram}
+                      onChange={(e) => setContactInfo({
+                        ...contactInfo,
+                        socialMedia: { ...contactInfo.socialMedia, instagram: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">VK</label>
+                    <input
+                      type="url"
+                      value={contactInfo.socialMedia.vk}
+                      onChange={(e) => setContactInfo({
+                        ...contactInfo,
+                        socialMedia: { ...contactInfo.socialMedia, vk: e.target.value }
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <button 
+                  onClick={handleSaveSettings}
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center mx-auto disabled:opacity-50"
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  {saving ? 'Сохранение...' : 'Сохранить изменения'}
                 </button>
               </div>
             </div>
@@ -1063,63 +1346,95 @@ const AdminPage: React.FC = () => {
 
           {/* Credentials Tab */}
           {activeTab === 'credentials' && (
-            <div className="bg-white rounded-lg shadow-md p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Настройки безопасности</h2>
-              
-              <div className="max-w-md">
-                <div className="mb-6">
-                  <label className="block text-gray-700 text-sm font-bold mb-2">
-                    Логин администратора
-                  </label>
-                  <input
-                    type="text"
-                    value={adminCredentials.username}
-                    onChange={(e) => setAdminCredentials({ ...adminCredentials, username: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+            <div className="space-y-8">
+              {/* Admin Credentials */}
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Учетные данные администратора</h2>
+                
+                <div className="max-w-md">
+                  <div className="mb-6">
+                    <label className="block text-gray-700 text-sm font-bold mb-2">
+                      Логин администратора
+                    </label>
+                    <input
+                      type="text"
+                      value={adminCredentials.username}
+                      onChange={(e) => setAdminCredentials({ ...adminCredentials, username: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-gray-700 text-sm font-bold mb-2">
+                      Пароль администратора
+                    </label>
+                    <input
+                      type="password"
+                      value={adminCredentials.password}
+                      onChange={(e) => setAdminCredentials({ ...adminCredentials, password: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSaveCredentials}
+                    disabled={saving}
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center disabled:opacity-50 mb-6"
+                  >
+                    <Save className="w-5 h-5 mr-2" />
+                    {saving ? 'Сохранение...' : 'Сохранить учетные данные'}
+                  </button>
+
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Важно:</strong> После изменения учетных данных вам потребуется войти заново с новыми данными.
+                    </p>
+                  </div>
                 </div>
+              </div>
 
-                <div className="mb-6">
-                  <label className="block text-gray-700 text-sm font-bold mb-2">
-                    Пароль администратора
-                  </label>
-                  <input
-                    type="password"
-                    value={adminCredentials.password}
-                    onChange={(e) => setAdminCredentials({ ...adminCredentials, password: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              {/* Admin Path */}
+              <div className="bg-white rounded-lg shadow-md p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Путь к админке</h2>
+                
+                <div className="max-w-md">
+                  <div className="mb-4">
+                    <label className="block text-gray-700 text-sm font-bold mb-2">
+                      Текущий путь
+                    </label>
+                    <div className="p-3 bg-gray-100 rounded-lg">
+                      <code className="text-blue-600">{window.location.origin}/{currentAdminPath}</code>
+                    </div>
+                  </div>
 
-                <div className="mb-6">
-                  <label className="block text-gray-700 text-sm font-bold mb-2">
-                    Путь к админке (без слэшей)
-                  </label>
-                  <input
-                    type="text"
-                    value={customAdminPath}
-                    onChange={(e) => setCustomAdminPath(e.target.value)}
-                    placeholder="Например: JHKGVbj23jhgv"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-sm text-gray-600 mt-2">
-                    Текущий путь: <strong>https://vgosty05.ru/{customAdminPath}</strong>
-                  </p>
-                </div>
+                  <div className="mb-6">
+                    <label className="block text-gray-700 text-sm font-bold mb-2">
+                      Новый путь (без слешей)
+                    </label>
+                    <input
+                      type="text"
+                      value={newAdminPath}
+                      onChange={(e) => setNewAdminPath(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+                      placeholder="например: JHKGVbj23jhgv"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
 
-                <button
-                  onClick={handleSaveCredentials}
-                  disabled={saving}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center disabled:opacity-50"
-                >
-                  <Save className="w-5 h-5 mr-2" />
-                  {saving ? 'Сохранение...' : 'Сохранить учетные данные'}
-                </button>
+                  <button
+                    onClick={handleSaveAdminPath}
+                    disabled={saving || !newAdminPath.trim()}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center disabled:opacity-50 mb-6"
+                  >
+                    <Save className="w-5 h-5 mr-2" />
+                    {saving ? 'Сохранение...' : 'Изменить путь'}
+                  </button>
 
-                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    <strong>Важно:</strong> После изменения учетных данных или пути админки вам потребуется войти заново с новыми данными по новому адресу.
-                  </p>
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Безопасность:</strong> После изменения пути старая ссылка /admin перестанет работать. 
+                      Сохраните новую ссылку в надежном месте!
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
