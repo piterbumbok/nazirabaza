@@ -37,8 +37,9 @@ if ! id "vgosti" &>/dev/null; then
     usermod -aG sudo vgosti
 fi
 
-# Создаем директорию для приложения
+# Создаем директорию для веб-приложений (важно: создаем /var/www сначала)
 echo "📁 Создаем директории..."
+mkdir -p /var/www
 mkdir -p /var/www/vgosty05
 chown -R vgosti:vgosti /var/www/vgosty05
 
