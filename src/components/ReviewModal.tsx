@@ -16,7 +16,7 @@ interface ReviewModalProps {
 }
 
 const ReviewModal: React.FC<ReviewModalProps> = ({ review, isOpen, onClose }) => {
-  // Закрытие по Escape
+  // Закрытие по Escape и блокировка скролла
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -32,7 +32,8 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ review, isOpen, onClose }) =>
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
+      // Восстанавливаем скролл
+      document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose]);
 
@@ -40,17 +41,29 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ review, isOpen, onClose }) =>
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4"
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999
+      }}
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+        className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transform transition-all duration-300 scale-100"
+        style={{
+          position: 'relative',
+          margin: 'auto'
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900">Отзыв</h3>
+            <h3 className="text-xl font-bold text-gray-900">Полный отзыв</h3>
             <button
               onClick={onClose}
               className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
@@ -92,8 +105,8 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ review, isOpen, onClose }) =>
             </div>
 
             {/* Comment with proper text wrapping */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+            <div className="bg-gray-50 rounded-lg p-6">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words text-base">
                 {review.comment}
               </p>
             </div>
@@ -103,7 +116,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ review, isOpen, onClose }) =>
           <div className="mt-6 pt-4 border-t border-gray-200">
             <button
               onClick={onClose}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
               Закрыть
             </button>

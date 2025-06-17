@@ -18,7 +18,10 @@ import {
   MessageSquare,
   Check,
   Clock,
-  User
+  User,
+  Phone,
+  Mail,
+  MapPin
 } from 'lucide-react';
 import { useAdminCabins } from '../hooks/useCabins';
 import { apiService } from '../services/api';
@@ -356,8 +359,11 @@ const AdminPage: React.FC = () => {
           <nav className="flex space-x-8">
             {[
               { id: 'cabins', name: 'Домики', icon: Home },
+              { id: 'gallery', name: 'Галерея', icon: ImageIcon },
+              { id: 'contacts', name: 'Контакты', icon: Phone },
               { id: 'reviews', name: 'Отзывы', icon: MessageSquare },
-              { id: 'settings', name: 'Настройки', icon: Settings }
+              { id: 'settings', name: 'Настройки', icon: Settings },
+              { id: 'account', name: 'Аккаунт', icon: User }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -394,6 +400,26 @@ const AdminPage: React.FC = () => {
           />
         )}
 
+        {activeTab === 'gallery' && (
+          <GalleryTab
+            settings={settings}
+            onSettingsChange={setSettings}
+            onImageUpload={handleImageUpload}
+            onRemoveImage={removeGalleryImage}
+            onSave={handleSaveSettings}
+            isLoading={isLoading}
+          />
+        )}
+
+        {activeTab === 'contacts' && (
+          <ContactsTab
+            settings={settings}
+            onSettingsChange={setSettings}
+            onSave={handleSaveSettings}
+            isLoading={isLoading}
+          />
+        )}
+
         {activeTab === 'reviews' && (
           <ReviewsTab
             reviews={reviews}
@@ -406,10 +432,16 @@ const AdminPage: React.FC = () => {
             settings={settings}
             onSettingsChange={setSettings}
             onSave={handleSaveSettings}
+            isLoading={isLoading}
+          />
+        )}
+
+        {activeTab === 'account' && (
+          <AccountTab
+            settings={settings}
+            onSettingsChange={setSettings}
             onUpdateCredentials={handleUpdateCredentials}
             onUpdateAdminPath={handleUpdateAdminPath}
-            onImageUpload={handleImageUpload}
-            onRemoveImage={removeGalleryImage}
             isLoading={isLoading}
           />
         )}
@@ -546,7 +578,7 @@ const CabinForm: React.FC<{
     bedrooms: cabin?.bedrooms || 1,
     bathrooms: cabin?.bathrooms || 1,
     maxGuests: cabin?.maxGuests || 2,
-    amenities: cabin?.amenities || [],
+    amenities: cabin?.amenities || ['Wi-Fi', 'Кондиционер', 'Терраса', 'Барбекю'],
     images: cabin?.images || [],
     featured: cabin?.featured || false,
     active: cabin?.active !== undefined ? cabin.active : true,
@@ -558,6 +590,10 @@ const CabinForm: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim() || !formData.description.trim() || formData.pricePerNight <= 0) {
+      alert('Заполните обязательные поля: название, описание и цену');
+      return;
+    }
     onSave(formData);
   };
 
@@ -860,6 +896,149 @@ const CabinForm: React.FC<{
   );
 };
 
+// Компонент для управления галереей
+const GalleryTab: React.FC<{
+  settings: AdminSettings;
+  onSettingsChange: (settings: AdminSettings) => void;
+  onImageUpload: (files: File[]) => void;
+  onRemoveImage: (index: number) => void;
+  onSave: () => void;
+  isLoading: boolean;
+}> = ({ settings, onSettingsChange, onImageUpload, onRemoveImage, onSave, isLoading }) => {
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Галерея на главной странице</h2>
+        <button
+          onClick={onSave}
+          disabled={isLoading}
+          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          <Save className="w-4 h-4 mr-2" />
+          {isLoading ? 'Сохранение...' : 'Сохранить'}
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <FileUpload onFileSelect={onImageUpload} multiple className="mb-6" />
+        
+        {settings.galleryImages && settings.galleryImages.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {settings.galleryImages.map((image, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={image}
+                  alt={`Галерея ${index + 1}`}
+                  className="w-full h-32 object-cover rounded-lg"
+                />
+                <button
+                  type="button"
+                  onClick={() => onRemoveImage(index)}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Нет загруженных изображений</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Компонент для управления контактами
+const ContactsTab: React.FC<{
+  settings: AdminSettings;
+  onSettingsChange: (settings: AdminSettings) => void;
+  onSave: () => void;
+  isLoading: boolean;
+}> = ({ settings, onSettingsChange, onSave, isLoading }) => {
+  const updateSetting = (key: keyof AdminSettings, value: any) => {
+    onSettingsChange({ ...settings, [key]: value });
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Контактная информация</h2>
+        <button
+          onClick={onSave}
+          disabled={isLoading}
+          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          <Save className="w-4 h-4 mr-2" />
+          {isLoading ? 'Сохранение...' : 'Сохранить'}
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Phone className="w-4 h-4 inline mr-2" />
+              Телефон
+            </label>
+            <input
+              type="tel"
+              value={settings.footerPhone || ''}
+              onChange={(e) => updateSetting('footerPhone', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="+7 (999) 123-45-67"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Mail className="w-4 h-4 inline mr-2" />
+              Email
+            </label>
+            <input
+              type="email"
+              value={settings.footerEmail || ''}
+              onChange={(e) => updateSetting('footerEmail', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="info@example.com"
+            />
+          </div>
+          
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <MapPin className="w-4 h-4 inline mr-2" />
+              Адрес
+            </label>
+            <input
+              type="text"
+              value={settings.footerAddress || ''}
+              onChange={(e) => updateSetting('footerAddress', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ваш адрес"
+            />
+          </div>
+          
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Описание в футере
+            </label>
+            <textarea
+              value={settings.footerDescription || ''}
+              onChange={(e) => updateSetting('footerDescription', e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Краткое описание вашей компании"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Компонент для управления отзывами
 const ReviewsTab: React.FC<{
   reviews: Review[];
@@ -913,7 +1092,7 @@ const ReviewsTab: React.FC<{
   );
 };
 
-// Карточка отзыва
+// Карточка отзыва с правильным отображением текста
 const ReviewCard: React.FC<{
   review: Review;
   onAction: (id: string, action: 'approve' | 'reject' | 'delete') => void;
@@ -947,9 +1126,11 @@ const ReviewCard: React.FC<{
       </div>
 
       <div className="mb-4">
-        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
-          {review.comment}
-        </p>
+        <div className="bg-gray-50 rounded-lg p-4 max-w-full">
+          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words overflow-hidden">
+            {review.comment}
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center justify-between">
@@ -992,26 +1173,13 @@ const ReviewCard: React.FC<{
   );
 };
 
-// Компонент настроек
+// Компонент настроек сайта
 const SettingsTab: React.FC<{
   settings: AdminSettings;
   onSettingsChange: (settings: AdminSettings) => void;
   onSave: () => void;
-  onUpdateCredentials: () => void;
-  onUpdateAdminPath: () => void;
-  onImageUpload: (files: File[]) => void;
-  onRemoveImage: (index: number) => void;
   isLoading: boolean;
-}> = ({ 
-  settings, 
-  onSettingsChange, 
-  onSave, 
-  onUpdateCredentials, 
-  onUpdateAdminPath,
-  onImageUpload,
-  onRemoveImage,
-  isLoading 
-}) => {
+}> = ({ settings, onSettingsChange, onSave, isLoading }) => {
   const updateSetting = (key: keyof AdminSettings, value: any) => {
     onSettingsChange({ ...settings, [key]: value });
   };
@@ -1178,52 +1346,6 @@ const SettingsTab: React.FC<{
         </div>
       </div>
 
-      {/* Контактная информация */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Контактная информация</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <input
-              type="email"
-              value={settings.footerEmail || ''}
-              onChange={(e) => updateSetting('footerEmail', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
-            <input
-              type="tel"
-              value={settings.footerPhone || ''}
-              onChange={(e) => updateSetting('footerPhone', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Адрес</label>
-            <input
-              type="text"
-              value={settings.footerAddress || ''}
-              onChange={(e) => updateSetting('footerAddress', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Описание в футере</label>
-            <textarea
-              value={settings.footerDescription || ''}
-              onChange={(e) => updateSetting('footerDescription', e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-      </div>
-
       {/* Правила проживания */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Правила проживания</h3>
@@ -1289,106 +1411,90 @@ const SettingsTab: React.FC<{
           </div>
         </div>
       </div>
+    </div>
+  );
+};
 
-      {/* Галерея */}
+// Компонент управления аккаунтом
+const AccountTab: React.FC<{
+  settings: AdminSettings;
+  onSettingsChange: (settings: AdminSettings) => void;
+  onUpdateCredentials: () => void;
+  onUpdateAdminPath: () => void;
+  isLoading: boolean;
+}> = ({ settings, onSettingsChange, onUpdateCredentials, onUpdateAdminPath, isLoading }) => {
+  const updateSetting = (key: keyof AdminSettings, value: any) => {
+    onSettingsChange({ ...settings, [key]: value });
+  };
+
+  return (
+    <div className="space-y-8">
+      <h2 className="text-2xl font-bold text-gray-900">Управление аккаунтом</h2>
+
+      {/* Данные для входа */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Галерея на главной странице</h3>
-        
-        <FileUpload onFileSelect={onImageUpload} multiple className="mb-4" />
-        
-        {settings.galleryImages && settings.galleryImages.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {settings.galleryImages.map((image, index) => (
-              <div key={index} className="relative">
-                <img
-                  src={image}
-                  alt={`Галерея ${index + 1}`}
-                  className="w-full h-24 object-cover rounded-lg"
-                />
-                <button
-                  type="button"
-                  onClick={() => onRemoveImage(index)}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Технические настройки */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Технические настройки</h3>
-        
-        <div className="space-y-6">
-          {/* Данные для входа */}
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Данные для входа</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <h4 className="text-md font-medium text-gray-900 mb-3">Данные для входа в админку</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Логин</label>
-                <input
-                  type="text"
-                  value={settings.adminUsername || ''}
-                  onChange={(e) => updateSetting('adminUsername', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
-                <input
-                  type="password"
-                  value={settings.adminPassword || ''}
-                  onChange={(e) => updateSetting('adminPassword', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            
-            <button
-              onClick={onUpdateCredentials}
-              disabled={isLoading}
-              className="mt-3 flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              <Key className="w-4 h-4 mr-2" />
-              Обновить данные для входа
-            </button>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Логин</label>
+            <input
+              type="text"
+              value={settings.adminUsername || ''}
+              onChange={(e) => updateSetting('adminUsername', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-
-          {/* Ссылка на админку */}
+          
           <div>
-            <h4 className="text-md font-medium text-gray-900 mb-3">Ссылка на админку</h4>
-            <div className="flex space-x-2">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Путь к админке</label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 py-2 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l-md">
-                    /
-                  </span>
-                  <input
-                    type="text"
-                    value={settings.adminPath || ''}
-                    onChange={(e) => updateSetting('adminPath', e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="admin"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <button
-              onClick={onUpdateAdminPath}
-              disabled={isLoading}
-              className="mt-3 flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-            >
-              <Link className="w-4 h-4 mr-2" />
-              Обновить ссылку
-            </button>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
+            <input
+              type="password"
+              value={settings.adminPassword || ''}
+              onChange={(e) => updateSetting('adminPassword', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
         </div>
+        
+        <button
+          onClick={onUpdateCredentials}
+          disabled={isLoading}
+          className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+        >
+          <Key className="w-4 h-4 mr-2" />
+          Обновить данные для входа
+        </button>
+      </div>
+
+      {/* Ссылка на админку */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Ссылка на админку</h3>
+        <div className="flex space-x-2 mb-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Путь к админке</label>
+            <div className="flex">
+              <span className="inline-flex items-center px-3 py-2 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l-md">
+                /
+              </span>
+              <input
+                type="text"
+                value={settings.adminPath || ''}
+                onChange={(e) => updateSetting('adminPath', e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="admin"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <button
+          onClick={onUpdateAdminPath}
+          disabled={isLoading}
+          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+        >
+          <Link className="w-4 h-4 mr-2" />
+          Обновить ссылку
+        </button>
       </div>
     </div>
   );
