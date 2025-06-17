@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes gradient-flow {
+  0%, 100% {
+    background-position: 0% 0%;
+  }
+  25% {
+    background-position: 100% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  75% {
+    background-position: 0% 100%;
+  }
+}
+
+@keyframes gradient-wave {
+  0%, 100% {
+    background-position: 0% 25%;
+  }
+  33% {
+    background-position: 50% 75%;
+  }
+  66% {
+    background-position: 100% 25%;
+  }
+}
+
+.animate-gradient-shift {
+  background-size: 400% 400%;
+  animation: gradient-shift 20s ease-in-out infinite;
+}
+
+.animate-gradient-flow {
+  background-size: 300% 300%;
+  animation: gradient-flow 25s ease-in-out infinite;
+}
+
+.animate-gradient-wave {
+  background-size: 500% 500%;
+  animation: gradient-wave 30s ease-in-out infinite;
+}
+
+/* Smooth blur effect for softer transitions */
+.gradient-blur {
+  filter: blur(1px);
+}
+
+.gradient-soft {
+  filter: blur(0.5px);
+}
