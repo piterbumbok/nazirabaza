@@ -16,11 +16,18 @@ const ReviewsPage: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [captchaVerified, setCaptchaVerified] = useState(false);
 
+  const MAX_COMMENT_LENGTH = 1000;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name.trim() || !formData.email.trim() || !formData.comment.trim()) {
       alert('Пожалуйста, заполните все обязательные поля');
+      return;
+    }
+
+    if (formData.comment.length > MAX_COMMENT_LENGTH) {
+      alert(`Отзыв не может быть длиннее ${MAX_COMMENT_LENGTH} символов`);
       return;
     }
 
@@ -45,9 +52,16 @@ const ReviewsPage: React.FC = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    // Ограничиваем длину комментария
+    if (name === 'comment' && value.length > MAX_COMMENT_LENGTH) {
+      return;
+    }
+    
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
   };
 
@@ -84,6 +98,8 @@ const ReviewsPage: React.FC = () => {
       </div>
     );
   }
+
+  const remainingChars = MAX_COMMENT_LENGTH - formData.comment.length;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -173,9 +189,14 @@ const ReviewsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-2">
-                      Ваш отзыв *
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label htmlFor="comment" className="block text-sm font-medium text-gray-700">
+                        Ваш отзыв *
+                      </label>
+                      <span className={`text-sm ${remainingChars < 50 ? 'text-red-500' : 'text-gray-500'}`}>
+                        {remainingChars} символов осталось
+                      </span>
+                    </div>
                     <textarea
                       id="comment"
                       name="comment"
@@ -183,9 +204,17 @@ const ReviewsPage: React.FC = () => {
                       onChange={handleInputChange}
                       required
                       rows={6}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      maxLength={MAX_COMMENT_LENGTH}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent resize-none ${
+                        remainingChars < 50 
+                          ? 'border-red-300 focus:ring-red-500' 
+                          : 'border-gray-300 focus:ring-blue-500'
+                      }`}
                       placeholder="Расскажите о своих впечатлениях..."
                     />
+                    <div className="mt-2 text-xs text-gray-500">
+                      Максимум {MAX_COMMENT_LENGTH} символов. Если отзыв длинный, читатели смогут открыть его в отдельном окне.
+                    </div>
                   </div>
 
                   {/* Капча */}
@@ -196,9 +225,9 @@ const ReviewsPage: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={isSubmitting || !captchaVerified}
+                    disabled={isSubmitting || !captchaVerified || formData.comment.length > MAX_COMMENT_LENGTH}
                     className={`w-full font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center ${
-                      captchaVerified && !isSubmitting
+                      captchaVerified && !isSubmitting && formData.comment.length <= MAX_COMMENT_LENGTH
                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}

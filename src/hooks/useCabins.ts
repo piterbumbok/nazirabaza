@@ -43,7 +43,81 @@ export const useCabins = () => {
       setLoading(true);
       setError(null);
       
-      // Для админки используем специальный эндпоинт, который возвращает все домики
+      // Используем обычный эндпоинт, который возвращает только активные домики
+      const apiCabins = await apiService.getCabins();
+      const convertedCabins = apiCabins.map(convertApiCabin);
+      setCabins(convertedCabins);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch cabins');
+      console.error('Error fetching cabins:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addCabin = async (cabin: Omit<Cabin, 'id'>): Promise<Cabin> => {
+    try {
+      const apiCabin = convertToApiCabin(cabin);
+      const newApiCabin = await apiService.createCabin(apiCabin);
+      const newCabin = convertApiCabin(newApiCabin);
+      setCabins(prev => [...prev, newCabin]);
+      return newCabin;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add cabin');
+      throw err;
+    }
+  };
+
+  const updateCabin = async (id: string, cabin: Omit<Cabin, 'id'>): Promise<Cabin> => {
+    try {
+      const apiCabin = convertToApiCabin(cabin);
+      const updatedApiCabin = await apiService.updateCabin(id, apiCabin);
+      const updatedCabin = convertApiCabin(updatedApiCabin);
+      setCabins(prev => prev.map(c => c.id === id ? updatedCabin : c));
+      return updatedCabin;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update cabin');
+      throw err;
+    }
+  };
+
+  const deleteCabin = async (id: string): Promise<void> => {
+    try {
+      await apiService.deleteCabin(id);
+      setCabins(prev => prev.filter(c => c.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete cabin');
+      throw err;
+    }
+  };
+
+  useEffect(() => {
+    fetchCabins();
+  }, []);
+
+  return {
+    cabins,
+    loading,
+    error,
+    fetchCabins,
+    addCabin,
+    updateCabin,
+    deleteCabin,
+  };
+};
+
+// Хук для админки - возвращает ВСЕ домики (включая неактивные)
+export const useAdminCabins = () => {
+  const [cabins, setCabins] = useState<Cabin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCabins = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Используем специальный эндпоинт для админки
       const response = await fetch('/api/admin/cabins');
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} ${response.statusText}`);
@@ -53,7 +127,7 @@ export const useCabins = () => {
       setCabins(convertedCabins);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch cabins');
-      console.error('Error fetching cabins:', err);
+      console.error('Error fetching admin cabins:', err);
     } finally {
       setLoading(false);
     }

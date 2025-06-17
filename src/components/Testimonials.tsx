@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Star } from 'lucide-react';
+import { Star, MessageSquare } from 'lucide-react';
 import { apiService } from '../services/api';
+import ReviewModal from './ReviewModal';
 
 interface Review {
   id: string;
@@ -13,6 +14,7 @@ interface Review {
 const Testimonials: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
 
   useEffect(() => {
     const loadReviews = async () => {
@@ -55,6 +57,19 @@ const Testimonials: React.FC = () => {
     loadReviews();
   }, []);
 
+  const truncateText = (text: string, maxLength: number = 150) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  const openReviewModal = (review: Review) => {
+    setSelectedReview(review);
+  };
+
+  const closeReviewModal = () => {
+    setSelectedReview(null);
+  };
+
   if (loading) {
     return (
       <section className="py-20 bg-white">
@@ -72,59 +87,84 @@ const Testimonials: React.FC = () => {
   }
 
   return (
-    <section className="py-20 bg-white">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Отзывы наших гостей</h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Нам важно ваше мнение. Мы постоянно работаем над улучшением сервиса, чтобы ваш отдых был незабываемым.
-          </p>
-        </div>
+    <>
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Отзывы наших гостей</h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Нам важно ваше мнение. Мы постоянно работаем над улучшением сервиса, чтобы ваш отдых был незабываемым.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {reviews.map((review) => (
-            <div 
-              key={review.id} 
-              className="bg-gray-50 rounded-2xl p-8 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border border-gray-100"
-            >
-              <div className="flex items-center mb-6">
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mr-4 text-white font-bold text-lg">
-                  {review.name.charAt(0)}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {reviews.map((review) => (
+              <div 
+                key={review.id} 
+                className="bg-gray-50 rounded-2xl p-8 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border border-gray-100"
+              >
+                <div className="flex items-center mb-6">
+                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mr-4 text-white font-bold text-lg">
+                    {review.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-lg">{review.name}</h4>
+                    <p className="text-sm text-gray-500">
+                      {new Date(review.created_at).toLocaleDateString('ru-RU')}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-bold text-gray-900 text-lg">{review.name}</h4>
-                  <p className="text-sm text-gray-500">
-                    {new Date(review.created_at).toLocaleDateString('ru-RU')}
+                
+                <div className="flex mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star 
+                      key={i}
+                      className={`w-5 h-5 ${
+                        i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+                
+                <div className="relative">
+                  <p className="text-gray-700 leading-relaxed mb-4">
+                    {truncateText(review.comment)}
                   </p>
+                  
+                  {review.comment.length > 150 && (
+                    <button
+                      onClick={() => openReviewModal(review)}
+                      className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-1" />
+                      Читать полностью
+                    </button>
+                  )}
                 </div>
               </div>
-              
-              <div className="flex mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star 
-                    key={i}
-                    className={`w-5 h-5 ${
-                      i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
-              
-              <p className="text-gray-700 leading-relaxed">{review.comment}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="text-center mt-12">
-          <a
-            href="/reviews"
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Оставить отзыв
-          </a>
+          <div className="text-center mt-12">
+            <a
+              href="/reviews"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Оставить отзыв
+            </a>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      {/* Review Modal */}
+      {selectedReview && (
+        <ReviewModal
+          review={selectedReview}
+          isOpen={!!selectedReview}
+          onClose={closeReviewModal}
+        />
+      )}
+    </>
   );
 };
 
