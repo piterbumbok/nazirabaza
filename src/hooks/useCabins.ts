@@ -15,6 +15,7 @@ const convertApiCabin = (apiCabin: ApiCabin): Cabin => ({
   amenities: apiCabin.amenities,
   images: apiCabin.images,
   featured: apiCabin.featured,
+  active: apiCabin.active || true
 });
 
 // Convert frontend cabin to API cabin format
@@ -29,6 +30,7 @@ const convertToApiCabin = (cabin: Omit<Cabin, 'id'>): Omit<ApiCabin, 'id'> => ({
   amenities: cabin.amenities,
   images: cabin.images,
   featured: cabin.featured,
+  active: cabin.active || true
 });
 
 export const useCabins = () => {
@@ -40,7 +42,12 @@ export const useCabins = () => {
     try {
       setLoading(true);
       setError(null);
-      const apiCabins = await apiService.getCabins();
+      // Используем админский эндпоинт для получения всех домиков
+      const response = await fetch('/api/admin/cabins');
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+      const apiCabins = await response.json();
       const convertedCabins = apiCabins.map(convertApiCabin);
       setCabins(convertedCabins);
     } catch (err) {

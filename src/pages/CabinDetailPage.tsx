@@ -49,11 +49,6 @@ const CabinDetailPage: React.FC = () => {
         <div className="container mx-auto px-4 py-12">
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">{cabin.name}</h1>
-            
-            <div className="flex items-center text-gray-600 mb-6">
-              <MapPin className="w-5 h-5 mr-2 text-blue-500" />
-              <span className="text-lg">{cabin.location}</span>
-            </div>
           </div>
           
           <PhotoGallery images={cabin.images} alt={cabin.name} />
@@ -86,6 +81,17 @@ const CabinDetailPage: React.FC = () => {
                     <span className="font-bold text-gray-900 text-lg">5 мин</span>
                   </div>
                 </div>
+
+                {/* Локация - показываем только если заполнена */}
+                {cabin.location && cabin.location.trim() && (
+                  <div className="mb-8">
+                    <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                      <MapPin className="w-5 h-5 mr-2 text-blue-500" />
+                      Локация
+                    </h3>
+                    <p className="text-gray-700 text-lg">{cabin.location}</p>
+                  </div>
+                )}
                 
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Удобства</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

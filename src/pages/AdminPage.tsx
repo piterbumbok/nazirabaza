@@ -21,7 +21,8 @@ import {
   EyeOff,
   CheckCircle,
   XCircle,
-  Star
+  Star,
+  Loader
 } from 'lucide-react';
 import LoginForm from '../components/LoginForm';
 import FileUpload from '../components/FileUpload';
@@ -69,6 +70,22 @@ interface Review {
   created_at: string;
 }
 
+// Стандартные удобства
+const STANDARD_AMENITIES = [
+  'Wi-Fi',
+  'Кондиционер',
+  'Терраса',
+  'Барбекю',
+  'Парковка',
+  'Стиральная машина',
+  'Кухня',
+  'Холодильник',
+  'Телевизор',
+  'Душ',
+  'Полотенца',
+  'Постельное белье'
+];
+
 const AdminPage: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('cabins');
@@ -92,8 +109,8 @@ const AdminPage: React.FC = () => {
     bedrooms: 1,
     bathrooms: 1,
     maxGuests: 2,
-    amenities: [''],
-    images: [''],
+    amenities: STANDARD_AMENITIES.slice(0, 5), // Первые 5 стандартных удобств
+    images: [] as string[],
     featured: false,
     active: true
   });
@@ -231,7 +248,8 @@ const AdminPage: React.FC = () => {
 
   const handleMultipleFileUpload = async (files: File[], type: 'cabin' | 'gallery') => {
     try {
-      setUploadingImages(prev => [...prev, ...files.map(f => f.name)]);
+      const fileNames = files.map(f => f.name);
+      setUploadingImages(prev => [...prev, ...fileNames]);
       
       const uploadPromises = files.map(file => apiService.uploadImage(file));
       const results = await Promise.all(uploadPromises);
@@ -239,7 +257,7 @@ const AdminPage: React.FC = () => {
       if (type === 'cabin') {
         setCabinForm(prev => ({
           ...prev,
-          images: [...prev.images.filter(img => img), ...results.map(r => r.imageUrl)]
+          images: [...prev.images, ...results.map(r => r.imageUrl)]
         }));
       } else if (type === 'gallery') {
         setSettings(prev => ({
@@ -248,7 +266,7 @@ const AdminPage: React.FC = () => {
         }));
       }
       
-      setUploadingImages(prev => prev.filter(name => !files.map(f => f.name).includes(name)));
+      setUploadingImages(prev => prev.filter(name => !fileNames.includes(name)));
     } catch (error) {
       console.error('Error uploading files:', error);
       setUploadingImages(prev => prev.filter(name => !files.map(f => f.name).includes(name)));
@@ -331,8 +349,8 @@ const AdminPage: React.FC = () => {
       bedrooms: 1,
       bathrooms: 1,
       maxGuests: 2,
-      amenities: [''],
-      images: [''],
+      amenities: STANDARD_AMENITIES.slice(0, 5), // Сбрасываем к стандартным удобствам
+      images: [],
       featured: false,
       active: true
     });
@@ -349,13 +367,37 @@ const AdminPage: React.FC = () => {
       bedrooms: cabin.bedrooms,
       bathrooms: cabin.bathrooms,
       maxGuests: cabin.maxGuests,
-      amenities: [...cabin.amenities, ''],
-      images: [...cabin.images, ''],
+      amenities: cabin.amenities,
+      images: cabin.images,
       featured: cabin.featured,
       active: cabin.active || true
     });
     setEditingCabin(cabin);
     setIsAddingCabin(true);
+  };
+
+  const addAmenity = () => {
+    setCabinForm(prev => ({ ...prev, amenities: [...prev.amenities, ''] }));
+  };
+
+  const removeAmenity = (index: number) => {
+    setCabinForm(prev => ({
+      ...prev,
+      amenities: prev.amenities.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateAmenity = (index: number, value: string) => {
+    setCabinForm(prev => ({
+      ...prev,
+      amenities: prev.amenities.map((amenity, i) => i === index ? value : amenity)
+    }));
+  };
+
+  const addStandardAmenity = (amenity: string) => {
+    if (!cabinForm.amenities.includes(amenity)) {
+      setCabinForm(prev => ({ ...prev, amenities: [...prev.amenities, amenity] }));
+    }
   };
 
   if (!isAuthenticated) {
@@ -445,11 +487,12 @@ const AdminPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Локация</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Локация (необязательно)</label>
                     <input
                       type="text"
                       value={cabinForm.location}
                       onChange={(e) => setCabinForm(prev => ({ ...prev, location: e.target.value }))}
+                      placeholder="Например: Побережье Каспийского моря"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -506,24 +549,42 @@ const AdminPage: React.FC = () => {
 
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Удобства</label>
+                    
+                    {/* Стандартные удобства */}
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-600 mb-2">Быстрое добавление:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {STANDARD_AMENITIES.map((amenity) => (
+                          <button
+                            key={amenity}
+                            type="button"
+                            onClick={() => addStandardAmenity(amenity)}
+                            disabled={cabinForm.amenities.includes(amenity)}
+                            className={`px-3 py-1 text-sm rounded-full border transition-colors ${
+                              cabinForm.amenities.includes(amenity)
+                                ? 'bg-green-100 text-green-800 border-green-300 cursor-not-allowed'
+                                : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-blue-100 hover:text-blue-800'
+                            }`}
+                          >
+                            {amenity} {cabinForm.amenities.includes(amenity) && '✓'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Список удобств */}
                     {cabinForm.amenities.map((amenity, index) => (
                       <div key={index} className="flex mb-2">
                         <input
                           type="text"
                           value={amenity}
-                          onChange={(e) => {
-                            const newAmenities = [...cabinForm.amenities];
-                            newAmenities[index] = e.target.value;
-                            setCabinForm(prev => ({ ...prev, amenities: newAmenities }));
-                          }}
+                          onChange={(e) => updateAmenity(index, e.target.value)}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Удобство"
                         />
                         <button
-                          onClick={() => {
-                            const newAmenities = cabinForm.amenities.filter((_, i) => i !== index);
-                            setCabinForm(prev => ({ ...prev, amenities: newAmenities }));
-                          }}
+                          type="button"
+                          onClick={() => removeAmenity(index)}
                           className="ml-2 px-3 py-2 text-red-600 hover:text-red-800"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -531,16 +592,23 @@ const AdminPage: React.FC = () => {
                       </div>
                     ))}
                     <button
-                      onClick={() => setCabinForm(prev => ({ ...prev, amenities: [...prev.amenities, ''] }))}
+                      type="button"
+                      onClick={addAmenity}
                       className="text-blue-600 hover:text-blue-800 text-sm"
                     >
-                      + Добавить удобство
+                      + Добавить свое удобство
                     </button>
                   </div>
 
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Изображения {uploadingImages.length > 0 && `(Загружается: ${uploadingImages.length})`}
+                      Изображения 
+                      {uploadingImages.length > 0 && (
+                        <span className="text-blue-600 ml-2">
+                          <Loader className="w-4 h-4 inline animate-spin mr-1" />
+                          Загружается: {uploadingImages.length} файлов
+                        </span>
+                      )}
                     </label>
                     <FileUpload
                       onFileSelect={(files) => handleMultipleFileUpload(files, 'cabin')}
@@ -549,13 +617,16 @@ const AdminPage: React.FC = () => {
                       className="mb-4"
                     />
                     <div className="grid grid-cols-4 gap-4">
-                      {cabinForm.images.filter(img => img).map((image, index) => (
+                      {cabinForm.images.map((image, index) => (
                         <div key={index} className="relative">
                           <img src={image} alt={`Изображение ${index + 1}`} className="w-full h-20 object-cover rounded" />
                           <button
+                            type="button"
                             onClick={() => {
-                              const newImages = cabinForm.images.filter((_, i) => i !== index);
-                              setCabinForm(prev => ({ ...prev, images: newImages }));
+                              setCabinForm(prev => ({
+                                ...prev,
+                                images: prev.images.filter((_, i) => i !== index)
+                              }));
                             }}
                             className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
                           >
@@ -617,7 +688,7 @@ const AdminPage: React.FC = () => {
                         {cabin.active ? 'Активный' : 'Неактивный'}
                       </span>
                     </div>
-                    <p className="text-gray-600 text-sm mb-1">{cabin.location}</p>
+                    {cabin.location && <p className="text-gray-600 text-sm mb-1">{cabin.location}</p>}
                     <p className="text-blue-600 font-bold">{formatPrice(cabin.pricePerNight)}</p>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -710,7 +781,13 @@ const AdminPage: React.FC = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-blue-600">Галерея на главной странице</h3>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Изображения галереи {uploadingImages.length > 0 && `(Загружается: ${uploadingImages.length})`}
+                  Изображения галереи 
+                  {uploadingImages.length > 0 && (
+                    <span className="text-blue-600 ml-2">
+                      <Loader className="w-4 h-4 inline animate-spin mr-1" />
+                      Загружается: {uploadingImages.length} файлов
+                    </span>
+                  )}
                 </label>
                 <FileUpload
                   onFileSelect={(files) => handleMultipleFileUpload(files, 'gallery')}
