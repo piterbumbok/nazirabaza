@@ -1,60 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import LoginForm from '../components/LoginForm';
-import { apiService } from '../services/api';
-import { useCabins } from '../hooks/useCabins';
 import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Save, 
-  X, 
-  Upload, 
-  Settings, 
   Home, 
+  Settings, 
+  Users, 
   Image, 
-  User,
-  Key,
-  Palette,
-  Globe,
+  Save, 
+  Plus, 
+  Trash2, 
+  Edit, 
+  Upload,
+  X,
+  FileText,
   Phone,
   Mail,
   MapPin,
-  FileText,
-  Star,
+  Clock,
+  Award,
+  Target,
   Eye,
-  EyeOff,
-  Info,
-  MessageSquare
+  Heart,
+  Star,
+  TrendingUp
 } from 'lucide-react';
+import LoginForm from '../components/LoginForm';
+import { useCabins } from '../hooks/useCabins';
+import { apiService } from '../services/api';
+import { formatPrice } from '../utils/formatPrice';
 
-interface AdminSettings {
-  // Hero Section
+interface SiteSettings {
+  siteName?: string;
   heroTitle?: string;
   heroSubtitle?: string;
-  
-  // Site Info
-  siteName?: string;
   phone?: string;
-  email?: string;
-  address?: string;
-  
-  // Footer
   footerDescription?: string;
   footerPhone?: string;
   footerEmail?: string;
   footerAddress?: string;
-  
-  // Gallery
   galleryImages?: string[];
-  
-  // Features
   whyChooseUsFeatures?: Array<{
     title: string;
     description: string;
   }>;
-  
-  // About Page
   aboutContent?: {
     title: string;
     subtitle: string;
@@ -75,8 +61,6 @@ interface AdminSettings {
       image: string;
     }>;
   };
-  
-  // Contact Page
   contactInfo?: {
     title: string;
     subtitle: string;
@@ -93,35 +77,38 @@ interface AdminSettings {
 }
 
 const AdminPage: React.FC = () => {
-  const { adminPath } = useParams();
-  const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState('cabins');
+  const [settings, setSettings] = useState<SiteSettings>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   
-  // Cabins
-  const { cabins, addCabin, updateCabin, deleteCabin, fetchCabins } = useCabins();
-  const [editingCabin, setEditingCabin] = useState<any>(null);
+  // Cabin form state
   const [showCabinForm, setShowCabinForm] = useState(false);
-  
-  // Settings
-  const [settings, setSettings] = useState<AdminSettings>({});
-  const [tempGalleryUrl, setTempGalleryUrl] = useState('');
-  
+  const [editingCabin, setEditingCabin] = useState<any>(null);
+  const [cabinForm, setCabinForm] = useState({
+    name: '',
+    description: '',
+    pricePerNight: 0,
+    location: '',
+    bedrooms: 1,
+    bathrooms: 1,
+    maxGuests: 2,
+    amenities: [''],
+    images: [''],
+    featured: false
+  });
+
   // Admin credentials
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
+  const [adminForm, setAdminForm] = useState({
+    username: '',
+    password: ''
+  });
+
+  const { cabins, loading: cabinsLoading, addCabin, updateCabin, deleteCabin, fetchCabins } = useCabins();
 
   useEffect(() => {
-    const checkAuth = () => {
-      const isAuth = localStorage.getItem('admin_logged_in') === 'true';
-      setIsLoggedIn(isAuth);
-      if (isAuth) {
-        loadSettings();
-      }
-    };
-    checkAuth();
+    loadSettings();
   }, []);
 
   const loadSettings = async () => {
@@ -133,13 +120,11 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const handleLogin = async (username: string, password: string) => {
+  const handleLogin = async (username: string, password: string): Promise<boolean> => {
     try {
       const response = await apiService.login(username, password);
       if (response.success) {
-        localStorage.setItem('admin_logged_in', 'true');
         setIsLoggedIn(true);
-        loadSettings();
         return true;
       }
       return false;
@@ -149,1430 +134,1306 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_logged_in');
-    setIsLoggedIn(false);
-    navigate('/');
-  };
-
-  const showMessage = (text: string, type: 'success' | 'error' = 'success') => {
-    setMessage(text);
-    setTimeout(() => setMessage(''), 3000);
-  };
-
-  // Cabin Management
-  const handleSaveCabin = async (cabinData: any) => {
+  const saveSettings = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
+      await apiService.updateSettings(settings);
+      setMessage('✅ Настройки сохранены!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      setMessage('❌ Ошибка сохранения');
+      setTimeout(() => setMessage(''), 3000);
+    }
+    setLoading(false);
+  };
+
+  const updateAdminCredentials = async () => {
+    if (!adminForm.username || !adminForm.password) {
+      setMessage('❌ Заполните все поля');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await apiService.updateCredentials(adminForm.username, adminForm.password);
+      setMessage('✅ Данные администратора обновлены!');
+      setAdminForm({ username: '', password: '' });
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      setMessage('❌ Ошибка обновления');
+      setTimeout(() => setMessage(''), 3000);
+    }
+    setLoading(false);
+  };
+
+  const handleCabinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const cabinData = {
+        ...cabinForm,
+        amenities: cabinForm.amenities.filter(a => a.trim()),
+        images: cabinForm.images.filter(i => i.trim())
+      };
+
       if (editingCabin) {
         await updateCabin(editingCabin.id, cabinData);
-        showMessage('Домик обновлен!');
+        setMessage('✅ Домик обновлен!');
       } else {
         await addCabin(cabinData);
-        showMessage('Домик добавлен!');
+        setMessage('✅ Домик добавлен!');
       }
-      setEditingCabin(null);
-      setShowCabinForm(false);
+
+      resetCabinForm();
+      setTimeout(() => setMessage(''), 3000);
     } catch (error) {
-      showMessage('Ошибка сохранения', 'error');
-    } finally {
-      setLoading(false);
+      setMessage('❌ Ошибка сохранения домика');
+      setTimeout(() => setMessage(''), 3000);
     }
+    setLoading(false);
+  };
+
+  const resetCabinForm = () => {
+    setCabinForm({
+      name: '',
+      description: '',
+      pricePerNight: 0,
+      location: '',
+      bedrooms: 1,
+      bathrooms: 1,
+      maxGuests: 2,
+      amenities: [''],
+      images: [''],
+      featured: false
+    });
+    setEditingCabin(null);
+    setShowCabinForm(false);
+  };
+
+  const editCabin = (cabin: any) => {
+    setCabinForm({
+      name: cabin.name,
+      description: cabin.description,
+      pricePerNight: cabin.pricePerNight,
+      location: cabin.location,
+      bedrooms: cabin.bedrooms,
+      bathrooms: cabin.bathrooms,
+      maxGuests: cabin.maxGuests,
+      amenities: cabin.amenities.length ? cabin.amenities : [''],
+      images: cabin.images.length ? cabin.images : [''],
+      featured: cabin.featured
+    });
+    setEditingCabin(cabin);
+    setShowCabinForm(true);
   };
 
   const handleDeleteCabin = async (id: string) => {
-    if (confirm('Удалить этот домик?')) {
+    if (window.confirm('Удалить этот домик?')) {
       try {
         await deleteCabin(id);
-        showMessage('Домик удален!');
+        setMessage('✅ Домик удален!');
+        setTimeout(() => setMessage(''), 3000);
       } catch (error) {
-        showMessage('Ошибка удаления', 'error');
+        setMessage('❌ Ошибка удаления');
+        setTimeout(() => setMessage(''), 3000);
       }
     }
   };
 
-  // Settings Management
-  const handleSaveSettings = async () => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
     try {
-      setLoading(true);
-      await apiService.updateSettings(settings);
-      showMessage('Настройки сохранены! Изменения видны всем пользователям.');
+      const response = await apiService.uploadImage(file);
+      const newImages = [...cabinForm.images];
+      const emptyIndex = newImages.findIndex(img => !img.trim());
+      if (emptyIndex !== -1) {
+        newImages[emptyIndex] = response.imageUrl;
+      } else {
+        newImages.push(response.imageUrl);
+      }
+      setCabinForm({ ...cabinForm, images: newImages });
+      setMessage('✅ Изображение загружено!');
+      setTimeout(() => setMessage(''), 3000);
     } catch (error) {
-      showMessage('Ошибка сохранения настроек', 'error');
-    } finally {
-      setLoading(false);
+      setMessage('❌ Ошибка загрузки изображения');
+      setTimeout(() => setMessage(''), 3000);
     }
+    setLoading(false);
   };
 
-  const handleUpdateCredentials = async () => {
-    if (!credentials.username || !credentials.password) {
-      showMessage('Заполните все поля', 'error');
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      await apiService.updateCredentials(credentials.username, credentials.password);
-      showMessage('Данные для входа обновлены!');
-      setCredentials({ username: '', password: '' });
-    } catch (error) {
-      showMessage('Ошибка обновления данных', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Gallery Management
   const addGalleryImage = () => {
-    if (tempGalleryUrl.trim()) {
-      const currentImages = settings.galleryImages || [];
-      setSettings({
-        ...settings,
-        galleryImages: [...currentImages, tempGalleryUrl.trim()]
-      });
-      setTempGalleryUrl('');
-    }
-  };
-
-  const removeGalleryImage = (index: number) => {
-    const currentImages = settings.galleryImages || [];
     setSettings({
       ...settings,
-      galleryImages: currentImages.filter((_, i) => i !== index)
+      galleryImages: [...(settings.galleryImages || []), '']
     });
   };
 
-  const handleImageUpload = async (file: File) => {
-    try {
-      setLoading(true);
-      const response = await apiService.uploadImage(file);
-      const currentImages = settings.galleryImages || [];
-      setSettings({
-        ...settings,
-        galleryImages: [...currentImages, response.imageUrl]
-      });
-      showMessage('Изображение загружено!');
-    } catch (error) {
-      showMessage('Ошибка загрузки изображения', 'error');
-    } finally {
-      setLoading(false);
-    }
+  const updateGalleryImage = (index: number, value: string) => {
+    const newImages = [...(settings.galleryImages || [])];
+    newImages[index] = value;
+    setSettings({
+      ...settings,
+      galleryImages: newImages
+    });
+  };
+
+  const removeGalleryImage = (index: number) => {
+    const newImages = [...(settings.galleryImages || [])];
+    newImages.splice(index, 1);
+    setSettings({
+      ...settings,
+      galleryImages: newImages
+    });
   };
 
   if (!isLoggedIn) {
     return <LoginForm onLogin={handleLogin} />;
   }
 
+  const tabs = [
+    { id: 'cabins', name: 'Домики', icon: Home },
+    { id: 'gallery', name: 'Галерея', icon: Image },
+    { id: 'content', name: 'Контент', icon: FileText },
+    { id: 'about', name: 'О нас', icon: Heart },
+    { id: 'contacts', name: 'Контакты', icon: Phone },
+    { id: 'settings', name: 'Настройки', icon: Settings },
+    { id: 'admin', name: 'Администрирование', icon: Users }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Home className="w-8 h-8 text-blue-600 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">Админ панель</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <a 
-                href="/" 
-                target="_blank"
-                className="text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Посмотреть сайт
-              </a>
-              <button
-                onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Выйти
-              </button>
-            </div>
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-2xl font-bold text-gray-900">Админ панель VGosti</h1>
+            <button
+              onClick={() => setIsLoggedIn(false)}
+              className="px-4 py-2 text-red-600 hover:text-red-700 font-medium"
+            >
+              Выйти
+            </button>
           </div>
         </div>
       </div>
-
-      {/* Message */}
-      {message && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-            {message}
-          </div>
-        </div>
-      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tabs */}
-        <div className="mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              {[
-                { id: 'cabins', name: 'Домики', icon: Home },
-                { id: 'gallery', name: 'Галерея', icon: Image },
-                { id: 'content', name: 'Контент', icon: FileText },
-                { id: 'about', name: 'О нас', icon: Info },
-                { id: 'contacts', name: 'Контакты', icon: MessageSquare },
-                { id: 'settings', name: 'Настройки', icon: Settings },
-                { id: 'admin', name: 'Админ', icon: User }
-              ].map(({ id, name, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveTab(id)}
-                  className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {name}
-                </button>
-              ))}
+        {message && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-blue-800">{message}</p>
+          </div>
+        )}
+
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Sidebar */}
+          <div className="lg:w-64">
+            <nav className="space-y-2">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${
+                      activeTab === tab.id
+                        ? 'bg-blue-100 text-blue-700 font-medium'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 mr-3" />
+                    {tab.name}
+                  </button>
+                );
+              })}
             </nav>
           </div>
-        </div>
 
-        {/* Cabins Tab */}
-        {activeTab === 'cabins' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Управление домиками</h2>
-              <button
-                onClick={() => {
-                  setEditingCabin(null);
-                  setShowCabinForm(true);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Добавить домик
-              </button>
-            </div>
+          {/* Main Content */}
+          <div className="flex-1">
+            {/* Cabins Tab */}
+            {activeTab === 'cabins' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-gray-900">Управление домиками</h2>
+                  <button
+                    onClick={() => setShowCabinForm(true)}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Добавить домик
+                  </button>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {cabins.map((cabin) => (
-                <div key={cabin.id} className="bg-white rounded-lg shadow-sm border p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">{cabin.name}</h3>
-                    <div className="flex space-x-2">
+                {showCabinForm && (
+                  <div className="bg-white rounded-lg shadow-sm border p-6">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-lg font-semibold">
+                        {editingCabin ? 'Редактировать домик' : 'Добавить новый домик'}
+                      </h3>
                       <button
-                        onClick={() => {
-                          setEditingCabin(cabin);
-                          setShowCabinForm(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-700"
+                        onClick={resetCabinForm}
+                        className="text-gray-400 hover:text-gray-600"
                       >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCabin(cabin.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
+                        <X className="w-6 h-6" />
                       </button>
                     </div>
-                  </div>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-3">{cabin.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold text-blue-600">
-                      {cabin.pricePerNight.toLocaleString()} ₽
-                    </span>
-                    {cabin.featured && (
-                      <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full flex items-center">
-                        <Star className="w-3 h-3 mr-1" />
-                        Популярный
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Cabin Form Modal */}
-            {showCabinForm && (
-              <CabinFormModal
-                cabin={editingCabin}
-                onSave={handleSaveCabin}
-                onClose={() => {
-                  setShowCabinForm(false);
-                  setEditingCabin(null);
-                }}
-                loading={loading}
-              />
-            )}
-          </div>
-        )}
+                    <form onSubmit={handleCabinSubmit} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Название
+                          </label>
+                          <input
+                            type="text"
+                            value={cabinForm.name}
+                            onChange={(e) => setCabinForm({ ...cabinForm, name: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                          />
+                        </div>
 
-        {/* Gallery Tab */}
-        {activeTab === 'gallery' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Галерея изображений</h2>
-              <button
-                onClick={handleSaveSettings}
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center disabled:opacity-50"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Сохранить галерею
-              </button>
-            </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Цена за ночь (₽)
+                          </label>
+                          <input
+                            type="number"
+                            value={cabinForm.pricePerNight}
+                            onChange={(e) => setCabinForm({ ...cabinForm, pricePerNight: parseInt(e.target.value) })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                          />
+                        </div>
 
-            {/* Add Image */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-              <h3 className="text-lg font-semibold mb-4">Добавить изображение</h3>
-              <div className="flex space-x-4 mb-4">
-                <input
-                  type="url"
-                  value={tempGalleryUrl}
-                  onChange={(e) => setTempGalleryUrl(e.target.value)}
-                  placeholder="URL изображения"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  onClick={addGalleryImage}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-                >
-                  Добавить
-                </button>
-              </div>
-              
-              <div className="border-t pt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Или загрузить файл:
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleImageUpload(file);
-                  }}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-              </div>
-            </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Местоположение
+                          </label>
+                          <input
+                            type="text"
+                            value={cabinForm.location}
+                            onChange={(e) => setCabinForm({ ...cabinForm, location: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                          />
+                        </div>
 
-            {/* Gallery Images */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(settings.galleryImages || []).map((imageUrl, index) => (
-                <div key={index} className="bg-white rounded-lg shadow-sm border overflow-hidden">
-                  <div className="aspect-video">
-                    <img
-                      src={imageUrl}
-                      alt={`Gallery ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 truncate">{imageUrl}</span>
-                      <button
-                        onClick={() => removeGalleryImage(index)}
-                        className="text-red-600 hover:text-red-700 ml-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Спальни
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={cabinForm.bedrooms}
+                              onChange={(e) => setCabinForm({ ...cabinForm, bedrooms: parseInt(e.target.value) })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Ванные
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={cabinForm.bathrooms}
+                              onChange={(e) => setCabinForm({ ...cabinForm, bathrooms: parseInt(e.target.value) })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Гости
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={cabinForm.maxGuests}
+                              onChange={(e) => setCabinForm({ ...cabinForm, maxGuests: parseInt(e.target.value) })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
 
-        {/* Content Tab */}
-        {activeTab === 'content' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Управление контентом</h2>
-              <button
-                onClick={handleSaveSettings}
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center disabled:opacity-50"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Сохранить контент
-              </button>
-            </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Описание
+                        </label>
+                        <textarea
+                          value={cabinForm.description}
+                          onChange={(e) => setCabinForm({ ...cabinForm, description: e.target.value })}
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
 
-            <div className="space-y-6">
-              {/* Hero Section */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Главная секция</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Заголовок
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.heroTitle || ''}
-                      onChange={(e) => setSettings({...settings, heroTitle: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Уютные домики и квартиры на берегу каспия"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Подзаголовок
-                    </label>
-                    <textarea
-                      value={settings.heroSubtitle || ''}
-                      onChange={(e) => setSettings({...settings, heroSubtitle: e.target.value})}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Отдохните от городской суеты..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Why Choose Us Features */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Почему выбирают нас</h3>
-                <div className="space-y-4">
-                  {(settings.whyChooseUsFeatures || []).map((feature, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium">Преимущество {index + 1}</span>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Удобства
+                        </label>
+                        {cabinForm.amenities.map((amenity, index) => (
+                          <div key={index} className="flex gap-2 mb-2">
+                            <input
+                              type="text"
+                              value={amenity}
+                              onChange={(e) => {
+                                const newAmenities = [...cabinForm.amenities];
+                                newAmenities[index] = e.target.value;
+                                setCabinForm({ ...cabinForm, amenities: newAmenities });
+                              }}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Удобство"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newAmenities = cabinForm.amenities.filter((_, i) => i !== index);
+                                setCabinForm({ ...cabinForm, amenities: newAmenities });
+                              }}
+                              className="px-3 py-2 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
                         <button
-                          onClick={() => {
-                            const features = [...(settings.whyChooseUsFeatures || [])];
-                            features.splice(index, 1);
-                            setSettings({...settings, whyChooseUsFeatures: features});
-                          }}
-                          className="text-red-600 hover:text-red-700"
+                          type="button"
+                          onClick={() => setCabinForm({ ...cabinForm, amenities: [...cabinForm.amenities, ''] })}
+                          className="text-blue-600 hover:text-blue-700 text-sm"
                         >
-                          <X className="w-4 h-4" />
+                          + Добавить удобство
                         </button>
                       </div>
-                      <input
-                        type="text"
-                        value={feature.title}
-                        onChange={(e) => {
-                          const features = [...(settings.whyChooseUsFeatures || [])];
-                          features[index] = {...features[index], title: e.target.value};
-                          setSettings({...settings, whyChooseUsFeatures: features});
-                        }}
-                        placeholder="Заголовок"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <textarea
-                        value={feature.description}
-                        onChange={(e) => {
-                          const features = [...(settings.whyChooseUsFeatures || [])];
-                          features[index] = {...features[index], description: e.target.value};
-                          setSettings({...settings, whyChooseUsFeatures: features});
-                        }}
-                        placeholder="Описание"
-                        rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => {
-                      const features = [...(settings.whyChooseUsFeatures || [])];
-                      features.push({title: '', description: ''});
-                      setSettings({...settings, whyChooseUsFeatures: features});
-                    }}
-                    className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-colors"
-                  >
-                    + Добавить преимущество
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* About Page Tab */}
-        {activeTab === 'about' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Страница "О нас"</h2>
-              <button
-                onClick={handleSaveSettings}
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center disabled:opacity-50"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Сохранить страницу
-              </button>
-            </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Изображения
+                        </label>
+                        {cabinForm.images.map((image, index) => (
+                          <div key={index} className="flex gap-2 mb-2">
+                            <input
+                              type="url"
+                              value={image}
+                              onChange={(e) => {
+                                const newImages = [...cabinForm.images];
+                                newImages[index] = e.target.value;
+                                setCabinForm({ ...cabinForm, images: newImages });
+                              }}
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="URL изображения"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newImages = cabinForm.images.filter((_, i) => i !== index);
+                                setCabinForm({ ...cabinForm, images: newImages });
+                              }}
+                              className="px-3 py-2 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCabinForm({ ...cabinForm, images: [...cabinForm.images, ''] })}
+                            className="text-blue-600 hover:text-blue-700 text-sm"
+                          >
+                            + Добавить URL
+                          </button>
+                          <label className="text-blue-600 hover:text-blue-700 text-sm cursor-pointer">
+                            <Upload className="w-4 h-4 inline mr-1" />
+                            Загрузить файл
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
 
-            <div className="space-y-6">
-              {/* Basic Info */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Основная информация</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Заголовок страницы
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.aboutContent?.title || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        aboutContent: {
-                          ...settings.aboutContent,
-                          title: e.target.value
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="О нас"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Подзаголовок
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.aboutContent?.subtitle || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        aboutContent: {
-                          ...settings.aboutContent,
-                          subtitle: e.target.value
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ваш идеальный отдых на берегу Каспийского моря"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Основное описание
-                    </label>
-                    <textarea
-                      value={settings.aboutContent?.description || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        aboutContent: {
-                          ...settings.aboutContent,
-                          description: e.target.value
-                        }
-                      })}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Мы предлагаем уникальные возможности для отдыха..."
-                    />
-                  </div>
-                </div>
-              </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="featured"
+                          checked={cabinForm.featured}
+                          onChange={(e) => setCabinForm({ ...cabinForm, featured: e.target.checked })}
+                          className="mr-2"
+                        />
+                        <label htmlFor="featured" className="text-sm font-medium text-gray-700">
+                          Рекомендуемый домик
+                        </label>
+                      </div>
 
-              {/* Mission & Vision */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Миссия и видение</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Наша миссия
-                    </label>
-                    <textarea
-                      value={settings.aboutContent?.mission || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        aboutContent: {
-                          ...settings.aboutContent,
-                          mission: e.target.value
-                        }
-                      })}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Наша миссия - создавать незабываемые впечатления..."
-                    />
+                      <div className="flex gap-4">
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          <Save className="w-4 h-4 mr-2" />
+                          {loading ? 'Сохранение...' : 'Сохранить'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetCabinForm}
+                          className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    </form>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Наше видение
-                    </label>
-                    <textarea
-                      value={settings.aboutContent?.vision || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        aboutContent: {
-                          ...settings.aboutContent,
-                          vision: e.target.value
-                        }
-                      })}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Мы стремимся стать ведущей компанией..."
-                    />
-                  </div>
-                </div>
-              </div>
+                )}
 
-              {/* Values */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Наши ценности</h3>
-                <div className="space-y-2">
-                  {(settings.aboutContent?.values || []).map((value, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={value}
-                        onChange={(e) => {
-                          const values = [...(settings.aboutContent?.values || [])];
-                          values[index] = e.target.value;
-                          setSettings({
-                            ...settings,
-                            aboutContent: {
-                              ...settings.aboutContent,
-                              values
-                            }
-                          });
-                        }}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ценность"
-                      />
-                      <button
-                        onClick={() => {
-                          const values = [...(settings.aboutContent?.values || [])];
-                          values.splice(index, 1);
-                          setSettings({
-                            ...settings,
-                            aboutContent: {
-                              ...settings.aboutContent,
-                              values
-                            }
-                          });
-                        }}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => {
-                      const values = [...(settings.aboutContent?.values || [])];
-                      values.push('');
-                      setSettings({
-                        ...settings,
-                        aboutContent: {
-                          ...settings.aboutContent,
-                          values
-                        }
-                      });
-                    }}
-                    className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-colors"
-                  >
-                    + Добавить ценность
-                  </button>
-                </div>
-              </div>
-
-              {/* Statistics */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Статистика</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Лет опыта
-                    </label>
-                    <input
-                      type="number"
-                      value={settings.aboutContent?.stats?.yearsExperience || 0}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        aboutContent: {
-                          ...settings.aboutContent,
-                          stats: {
-                            ...settings.aboutContent?.stats,
-                            yearsExperience: parseInt(e.target.value) || 0
-                          }
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Довольных гостей
-                    </label>
-                    <input
-                      type="number"
-                      value={settings.aboutContent?.stats?.happyGuests || 0}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        aboutContent: {
-                          ...settings.aboutContent,
-                          stats: {
-                            ...settings.aboutContent?.stats,
-                            happyGuests: parseInt(e.target.value) || 0
-                          }
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Объектов
-                    </label>
-                    <input
-                      type="number"
-                      value={settings.aboutContent?.stats?.properties || 0}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        aboutContent: {
-                          ...settings.aboutContent,
-                          stats: {
-                            ...settings.aboutContent?.stats,
-                            properties: parseInt(e.target.value) || 0
-                          }
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Локаций
-                    </label>
-                    <input
-                      type="number"
-                      value={settings.aboutContent?.stats?.locations || 0}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        aboutContent: {
-                          ...settings.aboutContent,
-                          stats: {
-                            ...settings.aboutContent?.stats,
-                            locations: parseInt(e.target.value) || 0
-                          }
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Contacts Page Tab */}
-        {activeTab === 'contacts' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Страница "Контакты"</h2>
-              <button
-                onClick={handleSaveSettings}
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center disabled:opacity-50"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Сохранить страницу
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Basic Info */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Основная информация</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Заголовок страницы
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.contactInfo?.title || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        contactInfo: {
-                          ...settings.contactInfo,
-                          title: e.target.value
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Контакты"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Подзаголовок
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.contactInfo?.subtitle || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        contactInfo: {
-                          ...settings.contactInfo,
-                          subtitle: e.target.value
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Свяжитесь с нами любым удобным способом"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Details */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Контактные данные</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Телефон
-                    </label>
-                    <input
-                      type="tel"
-                      value={settings.contactInfo?.phone || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        contactInfo: {
-                          ...settings.contactInfo,
-                          phone: e.target.value
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="+7 965 411-15-55"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={settings.contactInfo?.email || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        contactInfo: {
-                          ...settings.contactInfo,
-                          email: e.target.value
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="info@vgosti.ru"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      WhatsApp
-                    </label>
-                    <input
-                      type="tel"
-                      value={settings.contactInfo?.whatsapp || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        contactInfo: {
-                          ...settings.contactInfo,
-                          whatsapp: e.target.value
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="+79654111555"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Telegram
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.contactInfo?.telegram || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        contactInfo: {
-                          ...settings.contactInfo,
-                          telegram: e.target.value
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="@vgosti_support"
-                    />
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Адрес
-                  </label>
-                  <textarea
-                    value={settings.contactInfo?.address || ''}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      contactInfo: {
-                        ...settings.contactInfo,
-                        address: e.target.value
-                      }
-                    })}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Приморский бульвар, 123, Морской город, Россия"
-                  />
-                </div>
-              </div>
-
-              {/* Office Hours */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Время работы</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Будние дни
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.contactInfo?.officeHours?.weekdays || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        contactInfo: {
-                          ...settings.contactInfo,
-                          officeHours: {
-                            ...settings.contactInfo?.officeHours,
-                            weekdays: e.target.value
-                          }
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Пн-Пт: 9:00 - 18:00"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Выходные
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.contactInfo?.officeHours?.weekends || ''}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        contactInfo: {
-                          ...settings.contactInfo,
-                          officeHours: {
-                            ...settings.contactInfo?.officeHours,
-                            weekends: e.target.value
-                          }
-                        }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Сб-Вс: 10:00 - 16:00"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Настройки сайта</h2>
-              <button
-                onClick={handleSaveSettings}
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center disabled:opacity-50"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Сохранить настройки
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Site Info */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <Globe className="w-5 h-5 mr-2" />
-                  Основная информация
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Название сайта
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.siteName || ''}
-                      onChange={(e) => setSettings({...settings, siteName: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="В гости"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Телефон
-                    </label>
-                    <input
-                      type="tel"
-                      value={settings.phone || ''}
-                      onChange={(e) => setSettings({...settings, phone: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="+7 965 411-15-55"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={settings.email || ''}
-                      onChange={(e) => setSettings({...settings, email: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="info@vgosti.ru"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Адрес
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.address || ''}
-                      onChange={(e) => setSettings({...settings, address: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Приморский бульвар, 123"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer Settings */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Настройки футера</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Описание в футере
-                    </label>
-                    <textarea
-                      value={settings.footerDescription || ''}
-                      onChange={(e) => setSettings({...settings, footerDescription: e.target.value})}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Уютные домики и современные квартиры..."
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Телефон в футере
-                      </label>
-                      <input
-                        type="tel"
-                        value={settings.footerPhone || ''}
-                        onChange={(e) => setSettings({...settings, footerPhone: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email в футере
-                      </label>
-                      <input
-                        type="email"
-                        value={settings.footerEmail || ''}
-                        onChange={(e) => setSettings({...settings, footerEmail: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Адрес в футере
-                      </label>
-                      <input
-                        type="text"
-                        value={settings.footerAddress || ''}
-                        onChange={(e) => setSettings({...settings, footerAddress: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Admin Tab */}
-        {activeTab === 'admin' && (
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Администрирование</h2>
-            
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <Key className="w-5 h-5 mr-2" />
-                Изменить данные для входа
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Новый логин
-                  </label>
-                  <input
-                    type="text"
-                    value={credentials.username}
-                    onChange={(e) => setCredentials({...credentials, username: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="admin"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Новый пароль
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={credentials.password}
-                      onChange={(e) => setCredentials({...credentials, password: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
-                      placeholder="admin123"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4 text-gray-400" />
-                      ) : (
-                        <Eye className="w-4 h-4 text-gray-400" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {cabins.map((cabin) => (
+                    <div key={cabin.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                      {cabin.images[0] && (
+                        <img
+                          src={cabin.images[0]}
+                          alt={cabin.name}
+                          className="w-full h-48 object-cover"
+                        />
                       )}
+                      <div className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-semibold text-gray-900">{cabin.name}</h3>
+                          {cabin.featured && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                              Рекомендуемый
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 text-sm mb-2 line-clamp-2">{cabin.description}</p>
+                        <p className="text-lg font-bold text-blue-600 mb-3">
+                          {formatPrice(cabin.pricePerNight)} / ночь
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => editCabin(cabin)}
+                            className="flex items-center px-3 py-1 text-blue-600 hover:text-blue-700 text-sm"
+                          >
+                            <Edit className="w-4 h-4 mr-1" />
+                            Изменить
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCabin(cabin.id)}
+                            className="flex items-center px-3 py-1 text-red-600 hover:text-red-700 text-sm"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Удалить
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Gallery Tab */}
+            {activeTab === 'gallery' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-gray-900">Галерея главной страницы</h2>
+                  <button
+                    onClick={addGalleryImage}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Добавить изображение
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <div className="space-y-4">
+                    {(settings.galleryImages || []).map((image, index) => (
+                      <div key={index} className="flex gap-4 items-center">
+                        <div className="flex-1">
+                          <input
+                            type="url"
+                            value={image}
+                            onChange={(e) => updateGalleryImage(index, e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="URL изображения"
+                          />
+                        </div>
+                        {image && (
+                          <img
+                            src={image}
+                            alt={`Gallery ${index + 1}`}
+                            className="w-16 h-16 object-cover rounded-lg"
+                          />
+                        )}
+                        <button
+                          onClick={() => removeGalleryImage(index)}
+                          className="p-2 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-6">
+                    <button
+                      onClick={saveSettings}
+                      disabled={loading}
+                      className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {loading ? 'Сохранение...' : 'Сохранить галерею'}
                     </button>
                   </div>
                 </div>
               </div>
-              <div className="mt-4">
+            )}
+
+            {/* Content Tab */}
+            {activeTab === 'content' && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-gray-900">Управление контентом</h2>
+
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4">Главная страница</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Заголовок героя
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.heroTitle || ''}
+                        onChange={(e) => setSettings({ ...settings, heroTitle: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Уютные домики и квартиры на берегу каспия"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Подзаголовок героя
+                      </label>
+                      <textarea
+                        value={settings.heroSubtitle || ''}
+                        onChange={(e) => setSettings({ ...settings, heroSubtitle: e.target.value })}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Отдохните от городской суеты..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4">Секция "Почему выбирают нас"</h3>
+                  <div className="space-y-4">
+                    {(settings.whyChooseUsFeatures || []).map((feature, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Заголовок
+                            </label>
+                            <input
+                              type="text"
+                              value={feature.title}
+                              onChange={(e) => {
+                                const newFeatures = [...(settings.whyChooseUsFeatures || [])];
+                                newFeatures[index] = { ...feature, title: e.target.value };
+                                setSettings({ ...settings, whyChooseUsFeatures: newFeatures });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Описание
+                            </label>
+                            <textarea
+                              value={feature.description}
+                              onChange={(e) => {
+                                const newFeatures = [...(settings.whyChooseUsFeatures || [])];
+                                newFeatures[index] = { ...feature, description: e.target.value };
+                                setSettings({ ...settings, whyChooseUsFeatures: newFeatures });
+                              }}
+                              rows={3}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const newFeatures = (settings.whyChooseUsFeatures || []).filter((_, i) => i !== index);
+                            setSettings({ ...settings, whyChooseUsFeatures: newFeatures });
+                          }}
+                          className="mt-2 text-red-600 hover:text-red-700 text-sm"
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const newFeatures = [...(settings.whyChooseUsFeatures || []), { title: '', description: '' }];
+                        setSettings({ ...settings, whyChooseUsFeatures: newFeatures });
+                      }}
+                      className="text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      + Добавить преимущество
+                    </button>
+                  </div>
+                </div>
+
                 <button
-                  onClick={handleUpdateCredentials}
+                  onClick={saveSettings}
                   disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+                  className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  Обновить данные для входа
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Сохранение...' : 'Сохранить контент'}
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
+            )}
 
-// Cabin Form Modal Component
-const CabinFormModal: React.FC<{
-  cabin: any;
-  onSave: (data: any) => void;
-  onClose: () => void;
-  loading: boolean;
-}> = ({ cabin, onSave, onClose, loading }) => {
-  const [formData, setFormData] = useState({
-    name: cabin?.name || '',
-    description: cabin?.description || '',
-    pricePerNight: cabin?.pricePerNight || 0,
-    location: cabin?.location || '',
-    bedrooms: cabin?.bedrooms || 1,
-    bathrooms: cabin?.bathrooms || 1,
-    maxGuests: cabin?.maxGuests || 2,
-    amenities: cabin?.amenities || [],
-    images: cabin?.images || [],
-    featured: cabin?.featured || false
-  });
+            {/* About Tab */}
+            {activeTab === 'about' && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-gray-900">Страница "О нас"</h2>
 
-  const [newAmenity, setNewAmenity] = useState('');
-  const [newImageUrl, setNewImageUrl] = useState('');
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <Eye className="w-5 h-5 mr-2 text-blue-600" />
+                    Основная информация
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Заголовок страницы
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.aboutContent?.title || ''}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            aboutContent: {
+                              ...settings.aboutContent,
+                              title: e.target.value
+                            }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="О нас"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Подзаголовок
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.aboutContent?.subtitle || ''}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            aboutContent: {
+                              ...settings.aboutContent,
+                              subtitle: e.target.value
+                            }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Ваш идеальный отдых на берегу Каспийского моря"
+                        />
+                      </div>
+                    </div>
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
-  };
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Основное описание
+                      </label>
+                      <textarea
+                        value={settings.aboutContent?.description || ''}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          aboutContent: {
+                            ...settings.aboutContent,
+                            description: e.target.value
+                          }
+                        })}
+                        rows={4}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Мы предлагаем уникальные возможности для отдыха..."
+                      />
+                    </div>
 
-  const addAmenity = () => {
-    if (newAmenity.trim()) {
-      setFormData({
-        ...formData,
-        amenities: [...formData.amenities, newAmenity.trim()]
-      });
-      setNewAmenity('');
-    }
-  };
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Target className="w-4 h-4 inline mr-1" />
+                          Наша миссия
+                        </label>
+                        <textarea
+                          value={settings.aboutContent?.mission || ''}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            aboutContent: {
+                              ...settings.aboutContent,
+                              mission: e.target.value
+                            }
+                          })}
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Наша миссия - создавать незабываемые впечатления..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Eye className="w-4 h-4 inline mr-1" />
+                          Наше видение
+                        </label>
+                        <textarea
+                          value={settings.aboutContent?.vision || ''}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            aboutContent: {
+                              ...settings.aboutContent,
+                              vision: e.target.value
+                            }
+                          })}
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Мы стремимся стать ведущей компанией..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-  const removeAmenity = (index: number) => {
-    setFormData({
-      ...formData,
-      amenities: formData.amenities.filter((_, i) => i !== index)
-    });
-  };
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <Award className="w-5 h-5 mr-2 text-blue-600" />
+                    Ценности компании
+                  </h3>
+                  <div className="space-y-3">
+                    {(settings.aboutContent?.values || []).map((value, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={(e) => {
+                            const newValues = [...(settings.aboutContent?.values || [])];
+                            newValues[index] = e.target.value;
+                            setSettings({
+                              ...settings,
+                              aboutContent: {
+                                ...settings.aboutContent,
+                                values: newValues
+                              }
+                            });
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Ценность компании"
+                        />
+                        <button
+                          onClick={() => {
+                            const newValues = (settings.aboutContent?.values || []).filter((_, i) => i !== index);
+                            setSettings({
+                              ...settings,
+                              aboutContent: {
+                                ...settings.aboutContent,
+                                values: newValues
+                              }
+                            });
+                          }}
+                          className="px-3 py-2 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const newValues = [...(settings.aboutContent?.values || []), ''];
+                        setSettings({
+                          ...settings,
+                          aboutContent: {
+                            ...settings.aboutContent,
+                            values: newValues
+                          }
+                        });
+                      }}
+                      className="text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      + Добавить ценность
+                    </button>
+                  </div>
+                </div>
 
-  const addImage = () => {
-    if (newImageUrl.trim()) {
-      setFormData({
-        ...formData,
-        images: [...formData.images, newImageUrl.trim()]
-      });
-      setNewImageUrl('');
-    }
-  };
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
+                    Статистика
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Лет опыта
+                      </label>
+                      <input
+                        type="number"
+                        value={settings.aboutContent?.stats?.yearsExperience || 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          aboutContent: {
+                            ...settings.aboutContent,
+                            stats: {
+                              ...settings.aboutContent?.stats,
+                              yearsExperience: parseInt(e.target.value) || 0
+                            }
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Довольных гостей
+                      </label>
+                      <input
+                        type="number"
+                        value={settings.aboutContent?.stats?.happyGuests || 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          aboutContent: {
+                            ...settings.aboutContent,
+                            stats: {
+                              ...settings.aboutContent?.stats,
+                              happyGuests: parseInt(e.target.value) || 0
+                            }
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Объектов
+                      </label>
+                      <input
+                        type="number"
+                        value={settings.aboutContent?.stats?.properties || 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          aboutContent: {
+                            ...settings.aboutContent,
+                            stats: {
+                              ...settings.aboutContent?.stats,
+                              properties: parseInt(e.target.value) || 0
+                            }
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Локаций
+                      </label>
+                      <input
+                        type="number"
+                        value={settings.aboutContent?.stats?.locations || 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          aboutContent: {
+                            ...settings.aboutContent,
+                            stats: {
+                              ...settings.aboutContent?.stats,
+                              locations: parseInt(e.target.value) || 0
+                            }
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-  const removeImage = (index: number) => {
-    setFormData({
-      ...formData,
-      images: formData.images.filter((_, i) => i !== index)
-    });
-  };
+                <button
+                  onClick={saveSettings}
+                  disabled={loading}
+                  className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Сохранение...' : 'Сохранить страницу "О нас"'}
+                </button>
+              </div>
+            )}
 
-  const handleImageUpload = async (file: File) => {
-    try {
-      const response = await apiService.uploadImage(file);
-      setFormData({
-        ...formData,
-        images: [...formData.images, response.imageUrl]
-      });
-    } catch (error) {
-      alert('Ошибка загрузки изображения');
-    }
-  };
+            {/* Contacts Tab */}
+            {activeTab === 'contacts' && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-gray-900">Страница "Контакты"</h2>
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">
-              {cabin ? 'Редактировать домик' : 'Добавить домик'}
-            </h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <X className="w-6 h-6" />
-            </button>
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <Phone className="w-5 h-5 mr-2 text-blue-600" />
+                    Основная информация
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Заголовок страницы
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.contactInfo?.title || ''}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            contactInfo: {
+                              ...settings.contactInfo,
+                              title: e.target.value
+                            }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Контакты"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Подзаголовок
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.contactInfo?.subtitle || ''}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            contactInfo: {
+                              ...settings.contactInfo,
+                              subtitle: e.target.value
+                            }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Свяжитесь с нами любым удобным способом"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Phone className="w-4 h-4 inline mr-1" />
+                          Телефон
+                        </label>
+                        <input
+                          type="tel"
+                          value={settings.contactInfo?.phone || ''}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            contactInfo: {
+                              ...settings.contactInfo,
+                              phone: e.target.value
+                            }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="+7 965 411-15-55"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Mail className="w-4 h-4 inline mr-1" />
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          value={settings.contactInfo?.email || ''}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            contactInfo: {
+                              ...settings.contactInfo,
+                              email: e.target.value
+                            }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="info@vgosti.ru"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          WhatsApp
+                        </label>
+                        <input
+                          type="tel"
+                          value={settings.contactInfo?.whatsapp || ''}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            contactInfo: {
+                              ...settings.contactInfo,
+                              whatsapp: e.target.value
+                            }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="+79654111555"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <MapPin className="w-4 h-4 inline mr-1" />
+                        Адрес
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.contactInfo?.address || ''}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          contactInfo: {
+                            ...settings.contactInfo,
+                            address: e.target.value
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Приморский бульвар, 123, Морской город, Россия"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center">
+                    <Clock className="w-5 h-5 mr-2 text-blue-600" />
+                    Время работы
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Будние дни
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.contactInfo?.officeHours?.weekdays || ''}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          contactInfo: {
+                            ...settings.contactInfo,
+                            officeHours: {
+                              ...settings.contactInfo?.officeHours,
+                              weekdays: e.target.value
+                            }
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Пн-Пт: 9:00 - 18:00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Выходные дни
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.contactInfo?.officeHours?.weekends || ''}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          contactInfo: {
+                            ...settings.contactInfo,
+                            officeHours: {
+                              ...settings.contactInfo?.officeHours,
+                              weekends: e.target.value
+                            }
+                          }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Сб-Вс: 10:00 - 16:00"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={saveSettings}
+                  disabled={loading}
+                  className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Сохранение...' : 'Сохранить контакты'}
+                </button>
+              </div>
+            )}
+
+            {/* Settings Tab */}
+            {activeTab === 'settings' && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-gray-900">Настройки сайта</h2>
+
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4">Основная информация</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Название сайта
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.siteName || ''}
+                          onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="В гости"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Основной телефон
+                        </label>
+                        <input
+                          type="tel"
+                          value={settings.phone || ''}
+                          onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="+7 965 411-15-55"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4">Настройки футера</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Описание в футере
+                      </label>
+                      <textarea
+                        value={settings.footerDescription || ''}
+                        onChange={(e) => setSettings({ ...settings, footerDescription: e.target.value })}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Уютные домики и современные квартиры на берегу моря..."
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Телефон в футере
+                        </label>
+                        <input
+                          type="tel"
+                          value={settings.footerPhone || ''}
+                          onChange={(e) => setSettings({ ...settings, footerPhone: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="+7 (999) 123-45-67"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Email в футере
+                        </label>
+                        <input
+                          type="email"
+                          value={settings.footerEmail || ''}
+                          onChange={(e) => setSettings({ ...settings, footerEmail: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="info@vgosti.ru"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Адрес в футере
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.footerAddress || ''}
+                          onChange={(e) => setSettings({ ...settings, footerAddress: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Приморский бульвар, 123"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={saveSettings}
+                  disabled={loading}
+                  className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Сохранение...' : 'Сохранить настройки'}
+                </button>
+              </div>
+            )}
+
+            {/* Admin Tab */}
+            {activeTab === 'admin' && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-gray-900">Администрирование</h2>
+
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4">Изменить данные администратора</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Новый логин
+                        </label>
+                        <input
+                          type="text"
+                          value={adminForm.username}
+                          onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Введите новый логин"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Новый пароль
+                        </label>
+                        <input
+                          type="password"
+                          value={adminForm.password}
+                          onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Введите новый пароль"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={updateAdminCredentials}
+                      disabled={loading}
+                      className="flex items-center px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {loading ? 'Обновление...' : 'Обновить данные'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h4 className="font-medium text-yellow-800 mb-2">⚠️ Важно!</h4>
+                  <p className="text-yellow-700 text-sm">
+                    После изменения логина и пароля вам потребуется войти в систему заново с новыми данными.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Название *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Цена за ночь (₽) *
-              </label>
-              <input
-                type="number"
-                required
-                min="0"
-                value={formData.pricePerNight}
-                onChange={(e) => setFormData({...formData, pricePerNight: parseInt(e.target.value)})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Описание *
-            </label>
-            <textarea
-              required
-              rows={4}
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Местоположение
-            </label>
-            <input
-              type="text"
-              value={formData.location}
-              onChange={(e) => setFormData({...formData, location: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Спальни
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={formData.bedrooms}
-                onChange={(e) => setFormData({...formData, bedrooms: parseInt(e.target.value)})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ванные
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={formData.bathrooms}
-                onChange={(e) => setFormData({...formData, bathrooms: parseInt(e.target.value)})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Макс. гостей
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={formData.maxGuests}
-                onChange={(e) => setFormData({...formData, maxGuests: parseInt(e.target.value)})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Amenities */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Удобства
-            </label>
-            <div className="flex space-x-2 mb-2">
-              <input
-                type="text"
-                value={newAmenity}
-                onChange={(e) => setNewAmenity(e.target.value)}
-                placeholder="Добавить удобство"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addAmenity())}
-              />
-              <button
-                type="button"
-                onClick={addAmenity}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-              >
-                Добавить
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {formData.amenities.map((amenity, index) => (
-                <span
-                  key={index}
-                  className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center"
-                >
-                  {amenity}
-                  <button
-                    type="button"
-                    onClick={() => removeAmenity(index)}
-                    className="ml-2 text-blue-600 hover:text-blue-800"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Images */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Изображения
-            </label>
-            <div className="space-y-4">
-              <div className="flex space-x-2">
-                <input
-                  type="url"
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  placeholder="URL изображения"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addImage())}
-                />
-                <button
-                  type="button"
-                  onClick={addImage}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-                >
-                  Добавить
-                </button>
-              </div>
-              
-              <div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleImageUpload(file);
-                  }}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {formData.images.map((imageUrl, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={imageUrl}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Featured */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="featured"
-              checked={formData.featured}
-              onChange={(e) => setFormData({...formData, featured: e.target.checked})}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="featured" className="ml-2 block text-sm text-gray-900">
-              Популярный домик (показывать на главной)
-            </label>
-          </div>
-
-          <div className="flex justify-end space-x-4 pt-6 border-t">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
-            >
-              Отмена
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 flex items-center"
-            >
-              {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>}
-              {cabin ? 'Обновить' : 'Создать'}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );
