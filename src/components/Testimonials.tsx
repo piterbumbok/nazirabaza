@@ -62,7 +62,8 @@ const Testimonials: React.FC = () => {
     return text.substring(0, maxLength) + '...';
   };
 
-  const openReviewModal = (review: Review) => {
+  const openReviewModal = (review: Review, event: React.MouseEvent) => {
+    event.preventDefault();
     setSelectedReview(review);
   };
 
@@ -127,13 +128,13 @@ const Testimonials: React.FC = () => {
                 </div>
                 
                 <div className="relative">
-                  <p className="text-gray-700 leading-relaxed mb-4 break-words">
+                  <p className="text-gray-700 leading-relaxed mb-4 break-words whitespace-pre-wrap">
                     {truncateText(review.comment)}
                   </p>
                   
                   {review.comment.length > 150 && (
                     <button
-                      onClick={() => openReviewModal(review)}
+                      onClick={(e) => openReviewModal(review, e)}
                       className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
                     >
                       <MessageSquare className="w-4 h-4 mr-1" />
