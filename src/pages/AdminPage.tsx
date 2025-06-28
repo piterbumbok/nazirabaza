@@ -196,14 +196,10 @@ const AdminPage: React.FC = () => {
   // Сохранение домика
   const handleSaveCabin = async (cabinData: any) => {
     try {
-      console.log('🏠 Saving cabin with map URL:', cabinData.mapUrl);
-      
       if (editingCabin) {
         await updateCabin(editingCabin.id, cabinData);
-        console.log('✅ Cabin updated successfully');
       } else {
         await addCabin(cabinData);
-        console.log('✅ Cabin created successfully');
       }
       setEditingCabin(null);
       setShowCabinForm(false);
@@ -478,12 +474,6 @@ const AdminPage: React.FC = () => {
                                 {cabin.featured && (
                                   <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
                                     Рекомендуемый
-                                  </span>
-                                )}
-                                {/* Индикатор карты */}
-                                {(cabin as any).mapUrl && (cabin as any).mapUrl.trim() && (
-                                  <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                                    📍 Карта
                                   </span>
                                 )}
                               </div>
@@ -887,7 +877,7 @@ const AdminPage: React.FC = () => {
   );
 };
 
-// ИСПРАВЛЕННЫЙ компонент формы домика с правильным сохранением карты
+// Компонент формы домика БЕЗ карты
 const CabinForm: React.FC<{
   cabin: any;
   defaultAmenities: string[];
@@ -906,33 +896,10 @@ const CabinForm: React.FC<{
     images: cabin?.images || [],
     featured: cabin?.featured || false,
     active: cabin?.active !== undefined ? cabin.active : true,
-    distanceToSea: cabin?.distanceToSea || '',
-    mapUrl: cabin?.mapUrl || ''
+    distanceToSea: cabin?.distanceToSea || ''
   });
 
   const [uploading, setUploading] = useState(false);
-
-  // КРИТИЧЕСКИ ВАЖНО: правильная инициализация карты при редактировании
-  useEffect(() => {
-    if (cabin) {
-      console.log('🗺️ Loading cabin for edit, map URL:', cabin.mapUrl);
-      setFormData({
-        name: cabin.name || '',
-        description: cabin.description || '',
-        pricePerNight: cabin.pricePerNight || '',
-        location: cabin.location || '',
-        bedrooms: cabin.bedrooms || 1,
-        bathrooms: cabin.bathrooms || 1,
-        maxGuests: cabin.maxGuests || 2,
-        amenities: cabin.amenities || [],
-        images: cabin.images || [],
-        featured: cabin.featured || false,
-        active: cabin.active !== undefined ? cabin.active : true,
-        distanceToSea: cabin.distanceToSea || '',
-        mapUrl: cabin.mapUrl || '' // ВАЖНО: правильно загружаем карту
-      });
-    }
-  }, [cabin]);
 
   const handleImageUpload = async (files: File[]) => {
     try {
@@ -984,15 +951,7 @@ const CabinForm: React.FC<{
       return;
     }
 
-    // ВАЖНО: сохраняем карту как есть, без дополнительной обработки
-    console.log('🗺️ Submitting cabin with map URL:', formData.mapUrl);
-
-    const dataToSave = {
-      ...formData,
-      mapUrl: formData.mapUrl.trim() // Только убираем лишние пробелы
-    };
-
-    onSave(dataToSave);
+    onSave(formData);
   };
 
   return (
@@ -1079,41 +1038,6 @@ const CabinForm: React.FC<{
                   placeholder="5 мин"
                 />
               </div>
-            </div>
-
-            {/* ИСПРАВЛЕННОЕ поле карты */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Карта (Яндекс.Карты или Google Maps)
-              </label>
-              <textarea
-                value={formData.mapUrl}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  console.log('🗺️ Map URL changed:', newValue);
-                  setFormData({ ...formData, mapUrl: newValue });
-                }}
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Вставьте полный HTML код карты или ссылку"
-              />
-              <div className="mt-2 text-sm text-gray-600 space-y-1">
-                <p><strong>Для Яндекс.Карт:</strong> Скопируйте полный HTML код с сайта Яндекс.Карты</p>
-                <p><strong>Для Google Maps:</strong> Вставьте ссылку или iframe код</p>
-                <p className="text-blue-600">💡 Карта автоматически адаптируется под размеры сайта</p>
-              </div>
-              
-              {/* Предварительный просмотр карты */}
-              {formData.mapUrl && formData.mapUrl.trim() && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Предварительный просмотр:</p>
-                  <div className="text-xs text-gray-600 bg-white p-2 rounded border max-h-20 overflow-y-auto">
-                    {formData.mapUrl.substring(0, 200)}
-                    {formData.mapUrl.length > 200 && '...'}
-                  </div>
-                  <p className="text-xs text-green-600 mt-1">✅ Карта будет отображена на странице домика</p>
-                </div>
-              )}
             </div>
 
             <div className="grid grid-cols-3 gap-6">
