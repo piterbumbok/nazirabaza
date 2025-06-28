@@ -18,8 +18,7 @@ import {
   Image as ImageIcon,
   Phone,
   Mail,
-  MapPin,
-  Award
+  MapPin
 } from 'lucide-react';
 import { useAdminCabins } from '../hooks/useCabins';
 import { apiService } from '../services/api';
@@ -41,19 +40,10 @@ interface Review {
 }
 
 interface ContactInfo {
-  siteName: string;
   phone: string;
   email: string;
   address: string;
   footerDescription: string;
-  footerPhone: string;
-  footerEmail: string;
-  footerAddress: string;
-}
-
-interface WhyChooseUsFeature {
-  title: string;
-  description: string;
 }
 
 const AdminPage: React.FC = () => {
@@ -77,14 +67,10 @@ const AdminPage: React.FC = () => {
 
   // Контакты
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
-    siteName: 'В гости',
     phone: '+7 965 411-15-55',
     email: 'info@vgosti.ru',
     address: 'Приморский бульвар, 123, Морской город, Россия',
-    footerDescription: 'Уютные домики и современные квартиры на берегу моря для незабываемого отдыха.',
-    footerPhone: '+7 965 411-15-55',
-    footerEmail: 'info@vgosti.ru',
-    footerAddress: 'Приморский бульвар, 123, Морской город, Россия'
+    footerDescription: 'Уютные домики и современные квартиры на берегу моря для незабываемого отдыха.'
   });
 
   // Отзывы
@@ -94,30 +80,6 @@ const AdminPage: React.FC = () => {
   // Настройки
   const [settings, setSettings] = useState<AdminSettings>({});
   const [savingSettings, setSavingSettings] = useState(false);
-
-  // "Почему выбирают нас"
-  const [whyChooseUsSettings, setWhyChooseUsSettings] = useState({
-    title: 'Почему выбирают нас',
-    subtitle: 'Мы создаем идеальные условия для вашего отдыха на Каспийском море, уделяя внимание каждой детали.',
-    features: [
-      {
-        title: 'Лучшая локация',
-        description: 'Все наши объекты расположены в живописных местах с прямым доступом к Каспийскому морю и потрясающими видами.'
-      },
-      {
-        title: 'Близость к морю',
-        description: 'Дорога до пляжа занимает не более 5 минут пешком от любого нашего объекта недвижимости.'
-      },
-      {
-        title: 'Комфорт и уют',
-        description: 'Каждый домик и квартира полностью оборудованы всем необходимым для комфортного отдыха.'
-      },
-      {
-        title: 'Безопасное бронирование',
-        description: 'Гарантированное бронирование без скрытых платежей и дополнительных комиссий.'
-      }
-    ] as WhyChooseUsFeature[]
-  });
 
   // Аккаунт
   const [accountData, setAccountData] = useState({
@@ -175,15 +137,6 @@ const AdminPage: React.FC = () => {
       // Загружаем контакты
       if (settingsData.contactInfo) {
         setContactInfo(prev => ({ ...prev, ...settingsData.contactInfo }));
-      }
-      
-      // Загружаем настройки "Почему выбирают нас"
-      if (settingsData.whyChooseUsTitle || settingsData.whyChooseUsSubtitle || settingsData.whyChooseUsFeatures) {
-        setWhyChooseUsSettings(prev => ({
-          title: settingsData.whyChooseUsTitle || prev.title,
-          subtitle: settingsData.whyChooseUsSubtitle || prev.subtitle,
-          features: settingsData.whyChooseUsFeatures || prev.features
-        }));
       }
       
       // Загружаем отзывы
@@ -333,47 +286,6 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  // Сохранение настроек "Почему выбирают нас"
-  const handleSaveWhyChooseUs = async () => {
-    try {
-      await apiService.updateSettings({
-        whyChooseUsTitle: whyChooseUsSettings.title,
-        whyChooseUsSubtitle: whyChooseUsSettings.subtitle,
-        whyChooseUsFeatures: whyChooseUsSettings.features
-      });
-      alert('Настройки "Почему выбирают нас" сохранены!');
-    } catch (error) {
-      console.error('Error saving why choose us settings:', error);
-      alert('Ошибка при сохранении настроек');
-    }
-  };
-
-  // Добавление нового блока "Почему выбирают нас"
-  const handleAddWhyChooseUsFeature = () => {
-    setWhyChooseUsSettings(prev => ({
-      ...prev,
-      features: [...prev.features, { title: '', description: '' }]
-    }));
-  };
-
-  // Удаление блока "Почему выбирают нас"
-  const handleRemoveWhyChooseUsFeature = (index: number) => {
-    setWhyChooseUsSettings(prev => ({
-      ...prev,
-      features: prev.features.filter((_, i) => i !== index)
-    }));
-  };
-
-  // Обновление блока "Почему выбирают нас"
-  const handleUpdateWhyChooseUsFeature = (index: number, field: 'title' | 'description', value: string) => {
-    setWhyChooseUsSettings(prev => ({
-      ...prev,
-      features: prev.features.map((feature, i) => 
-        i === index ? { ...feature, [field]: value } : feature
-      )
-    }));
-  };
-
   // Сохранение настроек
   const handleSaveSettings = async () => {
     try {
@@ -489,7 +401,6 @@ const AdminPage: React.FC = () => {
                   { id: 'cabins', name: 'Домики', icon: Home },
                   { id: 'gallery', name: 'Галерея', icon: ImageIcon },
                   { id: 'contacts', name: 'Контакты', icon: Phone },
-                  { id: 'why-choose-us', name: 'Почему выбирают нас', icon: Award },
                   { id: 'reviews', name: 'Отзывы', icon: MessageSquare },
                   { id: 'settings', name: 'Настройки', icon: Settings },
                   { id: 'account', name: 'Аккаунт', icon: User }
@@ -650,118 +561,53 @@ const AdminPage: React.FC = () => {
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Управление контактами</h2>
                 
-                <div className="space-y-8">
-                  {/* Основная информация */}
+                <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Основная информация</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Название сайта
-                        </label>
-                        <input
-                          type="text"
-                          value={contactInfo.siteName}
-                          onChange={(e) => setContactInfo({ ...contactInfo, siteName: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="В гости"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Телефон (в шапке и на странице контактов)
-                        </label>
-                        <input
-                          type="text"
-                          value={contactInfo.phone}
-                          onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="+7 965 411-15-55"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          value={contactInfo.email}
-                          onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="info@vgosti.ru"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Адрес
-                        </label>
-                        <input
-                          type="text"
-                          value={contactInfo.address}
-                          onChange={(e) => setContactInfo({ ...contactInfo, address: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Приморский бульвар, 123, Морской город, Россия"
-                        />
-                      </div>
-                    </div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Телефон
+                    </label>
+                    <input
+                      type="text"
+                      value={contactInfo.phone}
+                      onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
 
-                  {/* Футер */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Контакты в футере</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Телефон в футере
-                        </label>
-                        <input
-                          type="text"
-                          value={contactInfo.footerPhone}
-                          onChange={(e) => setContactInfo({ ...contactInfo, footerPhone: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={contactInfo.email}
+                      onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email в футере
-                        </label>
-                        <input
-                          type="email"
-                          value={contactInfo.footerEmail}
-                          onChange={(e) => setContactInfo({ ...contactInfo, footerEmail: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Адрес
+                    </label>
+                    <input
+                      type="text"
+                      value={contactInfo.address}
+                      onChange={(e) => setContactInfo({ ...contactInfo, address: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
 
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Адрес в футере
-                        </label>
-                        <input
-                          type="text"
-                          value={contactInfo.footerAddress}
-                          onChange={(e) => setContactInfo({ ...contactInfo, footerAddress: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Описание в футере
-                        </label>
-                        <textarea
-                          value={contactInfo.footerDescription}
-                          onChange={(e) => setContactInfo({ ...contactInfo, footerDescription: e.target.value })}
-                          rows={4}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Уютные домики и современные квартиры на берегу моря..."
-                        />
-                      </div>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Описание в футере
+                    </label>
+                    <textarea
+                      value={contactInfo.footerDescription}
+                      onChange={(e) => setContactInfo({ ...contactInfo, footerDescription: e.target.value })}
+                      rows={4}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
 
                   <button
@@ -770,111 +616,6 @@ const AdminPage: React.FC = () => {
                   >
                     <Save className="w-4 h-4 mr-2" />
                     Сохранить контакты
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Почему выбирают нас */}
-            {activeTab === 'why-choose-us' && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Управление секцией "Почему выбирают нас"</h2>
-                
-                <div className="space-y-8">
-                  {/* Заголовки */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Заголовки секции</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Основной заголовок
-                        </label>
-                        <input
-                          type="text"
-                          value={whyChooseUsSettings.title}
-                          onChange={(e) => setWhyChooseUsSettings({ ...whyChooseUsSettings, title: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Почему выбирают нас"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Подзаголовок
-                        </label>
-                        <textarea
-                          value={whyChooseUsSettings.subtitle}
-                          onChange={(e) => setWhyChooseUsSettings({ ...whyChooseUsSettings, subtitle: e.target.value })}
-                          rows={3}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Мы создаем идеальные условия для вашего отдыха..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Блоки преимуществ */}
-                  <div>
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Блоки преимуществ</h3>
-                      <button
-                        onClick={handleAddWhyChooseUsFeature}
-                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Добавить блок
-                      </button>
-                    </div>
-
-                    <div className="space-y-6">
-                      {whyChooseUsSettings.features.map((feature, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-6">
-                          <div className="flex justify-between items-start mb-4">
-                            <h4 className="text-md font-medium text-gray-900">Блок {index + 1}</h4>
-                            <button
-                              onClick={() => handleRemoveWhyChooseUsFeature(index)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                          
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Заголовок блока
-                              </label>
-                              <input
-                                type="text"
-                                value={feature.title}
-                                onChange={(e) => handleUpdateWhyChooseUsFeature(index, 'title', e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Например: Лучшая локация"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Описание
-                              </label>
-                              <textarea
-                                value={feature.description}
-                                onChange={(e) => handleUpdateWhyChooseUsFeature(index, 'description', e.target.value)}
-                                rows={3}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Подробное описание преимущества..."
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleSaveWhyChooseUs}
-                    className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Сохранить настройки
                   </button>
                 </div>
               </div>
@@ -922,6 +663,7 @@ const AdminPage: React.FC = () => {
                           </div>
                         </div>
                         
+                        {/* Исправленное отображение отзыва в админке */}
                         <div className="bg-gray-50 rounded-lg p-4 mb-4 max-w-full overflow-hidden">
                           <p className="admin-review-text text-gray-700 break-words whitespace-pre-wrap">{review.comment}</p>
                         </div>
@@ -991,6 +733,37 @@ const AdminPage: React.FC = () => {
                           rows={3}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Отдохните от городской суеты..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Секция "Почему выбирают нас" */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Секция "Почему выбирают нас"</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Заголовок секции
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.whyChooseUsTitle || ''}
+                          onChange={(e) => setSettings({ ...settings, whyChooseUsTitle: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Почему выбирают нас"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Подзаголовок секции
+                        </label>
+                        <textarea
+                          value={settings.whyChooseUsSubtitle || ''}
+                          onChange={(e) => setSettings({ ...settings, whyChooseUsSubtitle: e.target.value })}
+                          rows={3}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Мы создаем идеальные условия..."
                         />
                       </div>
                     </div>
@@ -1161,35 +934,39 @@ const CabinForm: React.FC<{
     setFormData({ ...formData, amenities: newAmenities });
   };
 
-  // Функция для обработки карты
+  // Функция для обработки карты - УЛУЧШЕННАЯ
   const processMapUrl = (url: string): string => {
     if (!url.trim()) return '';
     
+    const cleanUrl = url.trim();
+    console.log('🗺️ Processing map URL in admin:', cleanUrl);
+    
     // Если это iframe, извлекаем src
-    if (url.includes('<iframe')) {
-      const srcMatch = url.match(/src="([^"]+)"/);
+    if (cleanUrl.includes('<iframe')) {
+      const srcMatch = cleanUrl.match(/src="([^"]+)"/i);
       if (srcMatch) {
+        console.log('✅ Extracted from iframe:', srcMatch[1]);
         return srcMatch[1];
       }
     }
     
     // Если это уже готовая embed ссылка
-    if (url.includes('google.com/maps/embed')) {
-      return url;
+    if (cleanUrl.includes('google.com/maps/embed')) {
+      console.log('✅ Already embed URL');
+      return cleanUrl;
     }
     
     // Если это обычная ссылка Google Maps, конвертируем в embed
-    if (url.includes('google.com/maps') || url.includes('maps.google.com')) {
-      return url.replace('google.com/maps', 'google.com/maps/embed');
+    if (cleanUrl.includes('google.com/maps') || cleanUrl.includes('maps.google.com')) {
+      let embedUrl = cleanUrl.replace(/google\.com\/maps/g, 'google.com/maps/embed');
+      embedUrl = embedUrl.replace(/maps\.google\.com/g, 'google.com/maps/embed');
+      console.log('✅ Converted to embed:', embedUrl);
+      return embedUrl;
     }
     
-    // Если это короткая ссылка goo.gl или maps.app.goo.gl
-    if (url.includes('goo.gl') || url.includes('maps.app.goo.gl')) {
-      // Для коротких ссылок возвращаем как есть - браузер сам перенаправит
-      return url;
-    }
-    
-    return url;
+    // Для всех остальных случаев возвращаем как есть
+    console.log('✅ Using URL as is:', cleanUrl);
+    return cleanUrl;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1218,6 +995,7 @@ const CabinForm: React.FC<{
       mapUrl: processedMapUrl
     };
 
+    console.log('💾 Saving cabin with map URL:', processedMapUrl);
     onSave(dataToSave);
   };
 

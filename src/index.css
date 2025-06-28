@@ -189,3 +189,57 @@ body.modal-open {
 .animate-pulse-soft {
   animation: pulse-soft 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* КРИТИЧЕСКИ ВАЖНЫЕ стили для карт */
+.map-container {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+}
+
+.map-container iframe {
+  position: relative !important;
+  z-index: 2 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: #f3f4f6;
+}
+
+/* Убираем любые наложения на карты */
+.map-container::before,
+.map-container::after {
+  display: none !important;
+}
+
+/* Убираем pointer-events с родительских элементов карты */
+.map-container * {
+  pointer-events: auto !important;
+}
+
+/* Принудительно показываем iframe карты */
+iframe[src*="google.com/maps"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* Убираем любые overlay элементы над картой */
+.map-container > div:not(:last-child) {
+  pointer-events: none;
+}
+
+/* Стили для правильного отображения Google Maps */
+.google-map-iframe {
+  width: 100% !important;
+  height: 384px !important; /* 96 * 4 = 384px для h-96 */
+  border: 0 !important;
+  border-radius: 12px !important;
+  display: block !important;
+  position: relative !important;
+  z-index: 5 !important;
+  background-color: #f9fafb;
+}
