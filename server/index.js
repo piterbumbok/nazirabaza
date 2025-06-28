@@ -74,7 +74,7 @@ async function initDatabase() {
     console.log('🔧 Initializing database...');
     
     db.serialize(() => {
-      // Create cabins table with ALL necessary fields
+      // Create cabins table with ALL necessary fields INCLUDING map_url
       db.run(`
         CREATE TABLE IF NOT EXISTS cabins (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,18 +98,21 @@ async function initDatabase() {
         else console.log('✅ Cabins table ready');
       });
 
-      // Add missing columns to existing table
-      db.run(`ALTER TABLE cabins ADD COLUMN active BOOLEAN DEFAULT 1`, (err) => {
-        // Ignore error if column already exists
-      });
-      
-      db.run(`ALTER TABLE cabins ADD COLUMN distance_to_sea TEXT`, (err) => {
-        // Ignore error if column already exists
-      });
-      
-      db.run(`ALTER TABLE cabins ADD COLUMN map_url TEXT`, (err) => {
-        // Ignore error if column already exists
-      });
+      // Add missing columns to existing table if they don't exist
+      const addColumnIfNotExists = (tableName, columnName, columnType, defaultValue = null) => {
+        const defaultClause = defaultValue ? ` DEFAULT ${defaultValue}` : '';
+        db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnType}${defaultClause}`, (err) => {
+          // Ignore error if column already exists
+          if (err && !err.message.includes('duplicate column name')) {
+            console.error(`Error adding column ${columnName}:`, err);
+          }
+        });
+      };
+
+      // Ensure all columns exist
+      addColumnIfNotExists('cabins', 'active', 'BOOLEAN', '1');
+      addColumnIfNotExists('cabins', 'distance_to_sea', 'TEXT');
+      addColumnIfNotExists('cabins', 'map_url', 'TEXT');
 
       // Create settings table
       db.run(`
@@ -232,7 +235,7 @@ async function initDatabase() {
               featured: 1,
               active: 1,
               distance_to_sea: '5 мин',
-              map_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3749.3569462438895!2d47.7007235!3d42.8628265!3m2!1i1024!2i768!4f13.1!5e1!3m2!1sru!2suk!4v1750187107268!5m2!1sru!2suk'
+              map_url: ''
             },
             {
               name: 'Семейный причал',
@@ -324,7 +327,7 @@ app.get('/api/cabins', (req, res) => {
       featured: Boolean(row.featured),
       active: Boolean(row.active),
       distanceToSea: row.distance_to_sea,
-      mapUrl: row.map_url
+      mapUrl: row.map_url || '' // ВАЖНО: всегда возвращаем карту
     }));
     
     console.log(`✅ Returned ${cabins.length} active cabins`);
@@ -355,7 +358,7 @@ app.get('/api/admin/cabins', (req, res) => {
       featured: Boolean(row.featured),
       active: Boolean(row.active),
       distanceToSea: row.distance_to_sea,
-      mapUrl: row.map_url
+      mapUrl: row.map_url || '' // ВАЖНО: всегда возвращаем карту
     }));
     
     console.log(`✅ Returned ${cabins.length} cabins for admin`);
@@ -393,10 +396,11 @@ app.get('/api/cabins/:id', (req, res) => {
       featured: Boolean(row.featured),
       active: Boolean(row.active),
       distanceToSea: row.distance_to_sea,
-      mapUrl: row.map_url
+      mapUrl: row.map_url || '' // ВАЖНО: всегда возвращаем карту
     };
     
     console.log(`✅ Returned cabin: ${cabin.name} with map: ${cabin.mapUrl ? 'YES' : 'NO'}`);
+    console.log(`🗺️ Map URL: ${cabin.mapUrl}`);
     res.json(cabin);
   });
 });
@@ -420,7 +424,7 @@ app.post('/api/cabins', (req, res) => {
     mapUrl
   } = req.body;
 
-  console.log('📍 Map URL received:', mapUrl);
+  console.log('📍 Map URL received for new cabin:', mapUrl);
 
   db.run(`
     INSERT INTO cabins (name, description, price_per_night, location, bedrooms, bathrooms, max_guests, amenities, images, featured, active, distance_to_sea, map_url)
@@ -438,7 +442,7 @@ app.post('/api/cabins', (req, res) => {
     featured ? 1 : 0,
     active ? 1 : 0,
     distanceToSea,
-    mapUrl
+    mapUrl || '' // ВАЖНО: сохраняем карту как есть
   ], function(err) {
     if (err) {
       console.error('Error creating cabin:', err);
@@ -466,10 +470,11 @@ app.post('/api/cabins', (req, res) => {
         featured: Boolean(row.featured),
         active: Boolean(row.active),
         distanceToSea: row.distance_to_sea,
-        mapUrl: row.map_url
+        mapUrl: row.map_url || ''
       };
 
       console.log(`✅ Created cabin: ${cabin.name} with map: ${cabin.mapUrl ? 'YES' : 'NO'}`);
+      console.log(`🗺️ Saved map URL: ${cabin.mapUrl}`);
       res.status(201).json(cabin);
     });
   });
@@ -517,7 +522,7 @@ app.put('/api/cabins/:id', (req, res) => {
     featured ? 1 : 0,
     active ? 1 : 0,
     distanceToSea,
-    mapUrl,
+    mapUrl || '', // ВАЖНО: сохраняем карту как есть
     id
   ], function(err) {
     if (err) {
@@ -551,10 +556,11 @@ app.put('/api/cabins/:id', (req, res) => {
         featured: Boolean(row.featured),
         active: Boolean(row.active),
         distanceToSea: row.distance_to_sea,
-        mapUrl: row.map_url
+        mapUrl: row.map_url || ''
       };
 
       console.log(`✅ Updated cabin: ${cabin.name} with map: ${cabin.mapUrl ? 'YES' : 'NO'}`);
+      console.log(`🗺️ Updated map URL: ${cabin.mapUrl}`);
       res.json(cabin);
     });
   });
