@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 
 interface PhotoGalleryProps {
@@ -9,7 +9,32 @@ interface PhotoGalleryProps {
 const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
   const [showGallery, setShowGallery] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [mainImage, setMainImage] = useState(0);
+  const [visibleImages, setVisibleImages] = useState<string[]>([]);
+  const [currentSet, setCurrentSet] = useState(0);
+
+  // Автоматическая смена фото каждые 3 секунды
+  useEffect(() => {
+    if (!images || images.length <= 5) {
+      setVisibleImages(images || []);
+      return;
+    }
+
+    // Если фото больше 5, показываем по 5 и меняем их
+    const interval = setInterval(() => {
+      setCurrentSet(prev => {
+        const nextSet = (prev + 1) % Math.ceil(images.length / 5);
+        const startIndex = nextSet * 5;
+        const endIndex = Math.min(startIndex + 5, images.length);
+        setVisibleImages(images.slice(startIndex, endIndex));
+        return nextSet;
+      });
+    }, 3000);
+
+    // Инициализируем первый набор
+    setVisibleImages(images.slice(0, 5));
+
+    return () => clearInterval(interval);
+  }, [images]);
 
   if (!images || images.length === 0) {
     return (
@@ -45,12 +70,8 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
     setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
-  const selectMainImage = (index: number) => {
-    setMainImage(index);
-  };
-
   // Handle keyboard navigation
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!showGallery) return;
 
@@ -75,7 +96,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
 
   return (
     <>
-      {/* Красивая сетка фотографий */}
+      {/* Красивая сетка фотографий с автоматической сменой */}
       <div className="grid grid-cols-4 gap-4 h-96">
         {/* Главное большое фото */}
         <div 
@@ -83,9 +104,9 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
           onClick={() => openGallery(0)}
         >
           <img
-            src={images[0]}
+            src={visibleImages[0] || images[0]}
             alt={`${alt} - главное фото`}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="w-full h-full object-cover transition-all duration-1000 group-hover:scale-110"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
@@ -96,23 +117,33 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
               <ZoomIn className="w-8 h-8 text-gray-800" />
             </div>
           </div>
-          {/* Индикатор количества фото */}
+          
+          {/* Индикатор количества фото и автосмены */}
           <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-2 rounded-full text-sm font-medium">
             {images.length} фото
+            {images.length > 5 && (
+              <div className="flex items-center mt-1">
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse mr-1"></div>
+                <span className="text-xs">авто</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Остальные фото в сетке */}
-        {images.slice(1, 5).map((image, index) => (
+        {/* Остальные фото в сетке с плавной сменой */}
+        {visibleImages.slice(1, 5).map((image, index) => (
           <div
-            key={index + 1}
+            key={`${currentSet}-${index}`}
             className="relative group cursor-pointer overflow-hidden rounded-xl bg-gray-100"
             onClick={() => openGallery(index + 1)}
           >
             <img
               src={image}
               alt={`${alt} - фото ${index + 2}`}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              className="w-full h-full object-cover transition-all duration-1000 group-hover:scale-110"
+              style={{
+                animation: images.length > 5 ? 'fadeInScale 1s ease-in-out' : 'none'
+              }}
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
@@ -126,19 +157,10 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
           </div>
         ))}
 
-        {/* Если фото больше 5, показываем кнопку "Еще фото" */}
-        {images.length > 5 && (
-          <div
-            className="relative group cursor-pointer overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center"
-            onClick={() => openGallery(5)}
-          >
-            <div className="text-center text-white">
-              <ZoomIn className="w-8 h-8 mx-auto mb-2" />
-              <p className="text-sm font-medium">+{images.length - 5}</p>
-              <p className="text-xs opacity-90">еще фото</p>
-            </div>
-          </div>
-        )}
+        {/* Если фото меньше 5, заполняем пустые ячейки */}
+        {visibleImages.length < 5 && Array.from({ length: 5 - visibleImages.length }).map((_, index) => (
+          <div key={`empty-${index}`} className="bg-gray-100 rounded-xl"></div>
+        ))}
       </div>
 
       {/* Полноэкранная галерея */}
@@ -194,7 +216,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
             
             {/* Миниатюры для навигации */}
             {images.length > 1 && (
-              <div className="flex justify-center space-x-2 px-4 overflow-x-auto max-w-full">
+              <div className="flex justify-center space-x-2 px-4 overflow-x-auto max-w-full scrollbar-hide">
                 <div className="flex space-x-2">
                   {images.map((image, index) => (
                     <button
@@ -205,7 +227,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
                       }}
                       className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden transition-all duration-300 ${
                         index === currentIndex 
-                          ? 'ring-2 ring-white scale-110' 
+                          ? 'ring-3 ring-white scale-110' 
                           : 'opacity-70 hover:opacity-100 hover:scale-105'
                       }`}
                     >
@@ -226,6 +248,19 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes fadeInScale {
+          0% {
+            opacity: 0.7;
+            transform: scale(0.95);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+      `}</style>
     </>
   );
 };

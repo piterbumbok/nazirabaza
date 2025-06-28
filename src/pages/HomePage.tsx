@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Hero from '../components/Hero';
 import FeaturedCabins from '../components/FeaturedCabins';
-import PhotoGallery from '../components/PhotoGallery';
 import WhyChooseUs from '../components/WhyChooseUs';
 import Testimonials from '../components/Testimonials';
 import Footer from '../components/Footer';
 import { apiService } from '../services/api';
+import { ZoomIn } from 'lucide-react';
 
 const HomePage: React.FC = () => {
   const [galleryImages, setGalleryImages] = useState([
@@ -18,6 +18,10 @@ const HomePage: React.FC = () => {
   ]);
 
   const [phone, setPhone] = useState('+7 965 411-15-55');
+  const [visibleImages, setVisibleImages] = useState<string[]>([]);
+  const [currentImageSet, setCurrentImageSet] = useState(0);
+  const [showGallery, setShowGallery] = useState(false);
+  const [currentGalleryIndex, setCurrentGalleryIndex] = useState(0);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -36,6 +40,75 @@ const HomePage: React.FC = () => {
 
     loadSettings();
   }, []);
+
+  // Умная логика отображения фото на главной странице
+  useEffect(() => {
+    if (galleryImages.length <= 6) {
+      // Если фото 6 или меньше - показываем все
+      setVisibleImages(galleryImages);
+    } else {
+      // Если больше 6 - показываем 6 и меняем их каждые 4 секунды
+      const interval = setInterval(() => {
+        setCurrentImageSet(prev => {
+          const nextSet = (prev + 1) % Math.ceil(galleryImages.length / 6);
+          const startIndex = nextSet * 6;
+          const endIndex = Math.min(startIndex + 6, galleryImages.length);
+          
+          // Если в последнем наборе меньше 6 фото, дополняем из начала
+          let newImages = galleryImages.slice(startIndex, endIndex);
+          if (newImages.length < 6) {
+            const needed = 6 - newImages.length;
+            newImages = [...newImages, ...galleryImages.slice(0, needed)];
+          }
+          
+          setVisibleImages(newImages);
+          return nextSet;
+        });
+      }, 4000);
+
+      // Инициализируем первый набор
+      setVisibleImages(galleryImages.slice(0, 6));
+
+      return () => clearInterval(interval);
+    }
+  }, [galleryImages]);
+
+  // Определяем сетку в зависимости от количества фото
+  const getGridLayout = (count: number) => {
+    switch (count) {
+      case 1:
+        return 'grid-cols-1';
+      case 2:
+        return 'grid-cols-2';
+      case 3:
+        return 'grid-cols-3';
+      case 4:
+        return 'grid-cols-2 md:grid-cols-4';
+      case 5:
+        return 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5';
+      default:
+        return 'grid-cols-2 md:grid-cols-3';
+    }
+  };
+
+  const openGallery = (index: number) => {
+    setCurrentGalleryIndex(index);
+    setShowGallery(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeGallery = () => {
+    setShowGallery(false);
+    document.body.style.overflow = '';
+  };
+
+  const goToPrevious = () => {
+    setCurrentGalleryIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+  };
+
+  const goToNext = () => {
+    setCurrentGalleryIndex((prev) => (prev === galleryImages.length - 1 ? 0 : prev + 1));
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -68,27 +141,66 @@ const HomePage: React.FC = () => {
       <div className="bg-gray-50/95 backdrop-blur-sm">
         <FeaturedCabins />
         
-        {/* Gallery Section - ПРОСТАЯ СЕТКА КАК БЫЛО */}
+        {/* Gallery Section - УМНАЯ АДАПТИВНАЯ СЕТКА */}
         <section className="py-20 bg-white/95 backdrop-blur-sm">
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
                 Галерея наших объектов
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-4">
                 Посмотрите на наши уютные домики и современные квартиры с потрясающими видами
               </p>
+              
+              {/* Индикатор автосмены */}
+              {galleryImages.length > 6 && (
+                <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></div>
+                  Показано 6 из {galleryImages.length} фото • Автосмена
+                </div>
+              )}
             </div>
             
-            {/* Простая сетка изображений для главной страницы */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {galleryImages.slice(0, 6).map((image, index) => (
-                <div key={index} className="aspect-video overflow-hidden rounded-2xl group cursor-pointer">
+            {/* Умная адаптивная сетка */}
+            <div className={`grid gap-6 ${getGridLayout(visibleImages.length)}`}>
+              {visibleImages.map((image, index) => (
+                <div 
+                  key={`${currentImageSet}-${index}`}
+                  className={`
+                    relative overflow-hidden rounded-2xl group cursor-pointer
+                    ${visibleImages.length === 1 ? 'aspect-video max-w-4xl mx-auto' : 
+                      visibleImages.length === 2 ? 'aspect-square' :
+                      visibleImages.length === 3 ? 'aspect-square' :
+                      'aspect-video'}
+                  `}
+                  onClick={() => openGallery(index)}
+                  style={{
+                    animation: galleryImages.length > 6 ? 'fadeInSlide 1s ease-out' : 'none'
+                  }}
+                >
                   <img
                     src={image}
                     alt={`Галерея ${index + 1}`}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
+                    }}
                   />
+                  
+                  {/* Overlay с эффектом увеличения */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 bg-white/90 rounded-full p-4 transform scale-75 group-hover:scale-100">
+                      <ZoomIn className="w-8 h-8 text-gray-800" />
+                    </div>
+                  </div>
+                  
+                  {/* Номер фото для больших галерей */}
+                  {visibleImages.length > 3 && (
+                    <div className="absolute top-4 right-4 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium">
+                      {index + 1}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -100,6 +212,77 @@ const HomePage: React.FC = () => {
       </div>
       
       <Footer />
+
+      {/* Полноэкранная галерея для главной страницы */}
+      {showGallery && (
+        <div
+          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+          onClick={closeGallery}
+        >
+          {/* Кнопка закрытия */}
+          <button
+            onClick={closeGallery}
+            className="absolute top-4 right-4 text-white p-3 rounded-full bg-black/30 hover:bg-black/50 z-10 transition-colors"
+          >
+            ✕
+          </button>
+
+          {/* Навигация */}
+          {galleryImages.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToPrevious();
+                }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white p-3 rounded-full bg-black/30 hover:bg-black/50 z-10 transition-colors"
+              >
+                ←
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToNext();
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-3 rounded-full bg-black/30 hover:bg-black/50 z-10 transition-colors"
+              >
+                →
+              </button>
+            </>
+          )}
+
+          {/* Главное изображение */}
+          <div className="relative max-h-[85vh] max-w-[90vw]">
+            <img
+              src={galleryImages[currentGalleryIndex]}
+              alt={`Галерея ${currentGalleryIndex + 1}`}
+              className="max-h-[85vh] max-w-[90vw] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+
+          {/* Индикатор */}
+          <div className="absolute bottom-4 left-0 right-0 text-center text-white">
+            <span className="bg-black/50 px-4 py-2 rounded-full text-sm">
+              {currentGalleryIndex + 1} / {galleryImages.length}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes fadeInSlide {
+          0% {
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+      `}</style>
     </div>
   );
 };
