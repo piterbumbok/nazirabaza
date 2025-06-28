@@ -18,7 +18,8 @@ import {
   Image as ImageIcon,
   Phone,
   Mail,
-  MapPin
+  MapPin,
+  Award
 } from 'lucide-react';
 import { useAdminCabins } from '../hooks/useCabins';
 import { apiService } from '../services/api';
@@ -40,6 +41,7 @@ interface Review {
 }
 
 interface ContactInfo {
+  siteName: string;
   phone: string;
   email: string;
   address: string;
@@ -47,7 +49,11 @@ interface ContactInfo {
   footerPhone: string;
   footerEmail: string;
   footerAddress: string;
-  siteName: string;
+}
+
+interface WhyChooseUsFeature {
+  title: string;
+  description: string;
 }
 
 const AdminPage: React.FC = () => {
@@ -65,24 +71,20 @@ const AdminPage: React.FC = () => {
   const [editingCabin, setEditingCabin] = useState<any>(null);
   const [showCabinForm, setShowCabinForm] = useState(false);
 
-  // Удобства
-  const [customAmenities, setCustomAmenities] = useState<string[]>([]);
-  const [newAmenity, setNewAmenity] = useState('');
-
   // Галерея
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [uploadingGallery, setUploadingGallery] = useState(false);
 
   // Контакты
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
+    siteName: 'В гости',
     phone: '+7 965 411-15-55',
     email: 'info@vgosti.ru',
     address: 'Приморский бульвар, 123, Морской город, Россия',
     footerDescription: 'Уютные домики и современные квартиры на берегу моря для незабываемого отдыха.',
     footerPhone: '+7 965 411-15-55',
     footerEmail: 'info@vgosti.ru',
-    footerAddress: 'Приморский бульвар, 123, Морской город, Россия',
-    siteName: 'В гости'
+    footerAddress: 'Приморский бульвар, 123, Морской город, Россия'
   });
 
   // Отзывы
@@ -92,6 +94,30 @@ const AdminPage: React.FC = () => {
   // Настройки
   const [settings, setSettings] = useState<AdminSettings>({});
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // "Почему выбирают нас"
+  const [whyChooseUsSettings, setWhyChooseUsSettings] = useState({
+    title: 'Почему выбирают нас',
+    subtitle: 'Мы создаем идеальные условия для вашего отдыха на Каспийском море, уделяя внимание каждой детали.',
+    features: [
+      {
+        title: 'Лучшая локация',
+        description: 'Все наши объекты расположены в живописных местах с прямым доступом к Каспийскому морю и потрясающими видами.'
+      },
+      {
+        title: 'Близость к морю',
+        description: 'Дорога до пляжа занимает не более 5 минут пешком от любого нашего объекта недвижимости.'
+      },
+      {
+        title: 'Комфорт и уют',
+        description: 'Каждый домик и квартира полностью оборудованы всем необходимым для комфортного отдыха.'
+      },
+      {
+        title: 'Безопасное бронирование',
+        description: 'Гарантированное бронирование без скрытых платежей и дополнительных комиссий.'
+      }
+    ] as WhyChooseUsFeature[]
+  });
 
   // Аккаунт
   const [accountData, setAccountData] = useState({
@@ -150,10 +176,14 @@ const AdminPage: React.FC = () => {
       if (settingsData.contactInfo) {
         setContactInfo(prev => ({ ...prev, ...settingsData.contactInfo }));
       }
-
-      // Загружаем кастомные удобства
-      if (settingsData.customAmenities) {
-        setCustomAmenities(settingsData.customAmenities);
+      
+      // Загружаем настройки "Почему выбирают нас"
+      if (settingsData.whyChooseUsTitle || settingsData.whyChooseUsSubtitle || settingsData.whyChooseUsFeatures) {
+        setWhyChooseUsSettings(prev => ({
+          title: settingsData.whyChooseUsTitle || prev.title,
+          subtitle: settingsData.whyChooseUsSubtitle || prev.subtitle,
+          features: settingsData.whyChooseUsFeatures || prev.features
+        }));
       }
       
       // Загружаем отзывы
@@ -240,26 +270,6 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  // Управление удобствами
-  const handleAddAmenity = async () => {
-    if (newAmenity.trim() && !customAmenities.includes(newAmenity.trim())) {
-      const updatedAmenities = [...customAmenities, newAmenity.trim()];
-      setCustomAmenities(updatedAmenities);
-      setNewAmenity('');
-      
-      // Сохраняем в настройки
-      await apiService.updateSettings({ customAmenities: updatedAmenities });
-    }
-  };
-
-  const handleDeleteAmenity = async (amenity: string) => {
-    const updatedAmenities = customAmenities.filter(a => a !== amenity);
-    setCustomAmenities(updatedAmenities);
-    
-    // Сохраняем в настройки
-    await apiService.updateSettings({ customAmenities: updatedAmenities });
-  };
-
   // Загрузка изображений в галерею
   const handleGalleryUpload = async (files: File[]) => {
     try {
@@ -291,16 +301,7 @@ const AdminPage: React.FC = () => {
   // Сохранение контактов
   const handleSaveContacts = async () => {
     try {
-      await apiService.updateSettings({ 
-        contactInfo,
-        // Дублируем основные контакты для совместимости
-        phone: contactInfo.phone,
-        footerPhone: contactInfo.footerPhone,
-        footerEmail: contactInfo.footerEmail,
-        footerAddress: contactInfo.footerAddress,
-        footerDescription: contactInfo.footerDescription,
-        siteName: contactInfo.siteName
-      });
+      await apiService.updateSettings({ contactInfo });
       alert('Контакты сохранены!');
     } catch (error) {
       console.error('Error saving contacts:', error);
@@ -330,6 +331,47 @@ const AdminPage: React.FC = () => {
         alert('Ошибка при удалении отзыва');
       }
     }
+  };
+
+  // Сохранение настроек "Почему выбирают нас"
+  const handleSaveWhyChooseUs = async () => {
+    try {
+      await apiService.updateSettings({
+        whyChooseUsTitle: whyChooseUsSettings.title,
+        whyChooseUsSubtitle: whyChooseUsSettings.subtitle,
+        whyChooseUsFeatures: whyChooseUsSettings.features
+      });
+      alert('Настройки "Почему выбирают нас" сохранены!');
+    } catch (error) {
+      console.error('Error saving why choose us settings:', error);
+      alert('Ошибка при сохранении настроек');
+    }
+  };
+
+  // Добавление нового блока "Почему выбирают нас"
+  const handleAddWhyChooseUsFeature = () => {
+    setWhyChooseUsSettings(prev => ({
+      ...prev,
+      features: [...prev.features, { title: '', description: '' }]
+    }));
+  };
+
+  // Удаление блока "Почему выбирают нас"
+  const handleRemoveWhyChooseUsFeature = (index: number) => {
+    setWhyChooseUsSettings(prev => ({
+      ...prev,
+      features: prev.features.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Обновление блока "Почему выбирают нас"
+  const handleUpdateWhyChooseUsFeature = (index: number, field: 'title' | 'description', value: string) => {
+    setWhyChooseUsSettings(prev => ({
+      ...prev,
+      features: prev.features.map((feature, i) => 
+        i === index ? { ...feature, [field]: value } : feature
+      )
+    }));
   };
 
   // Сохранение настроек
@@ -445,9 +487,9 @@ const AdminPage: React.FC = () => {
               <ul className="space-y-2">
                 {[
                   { id: 'cabins', name: 'Домики', icon: Home },
-                  { id: 'amenities', name: 'Удобства', icon: Star },
                   { id: 'gallery', name: 'Галерея', icon: ImageIcon },
                   { id: 'contacts', name: 'Контакты', icon: Phone },
+                  { id: 'why-choose-us', name: 'Почему выбирают нас', icon: Award },
                   { id: 'reviews', name: 'Отзывы', icon: MessageSquare },
                   { id: 'settings', name: 'Настройки', icon: Settings },
                   { id: 'account', name: 'Аккаунт', icon: User }
@@ -553,7 +595,7 @@ const AdminPage: React.FC = () => {
                 {showCabinForm && (
                   <CabinForm
                     cabin={editingCabin}
-                    defaultAmenities={[...defaultAmenities, ...customAmenities]}
+                    defaultAmenities={defaultAmenities}
                     onSave={handleSaveCabin}
                     onCancel={() => {
                       setShowCabinForm(false);
@@ -561,71 +603,6 @@ const AdminPage: React.FC = () => {
                     }}
                   />
                 )}
-              </div>
-            )}
-
-            {/* Удобства */}
-            {activeTab === 'amenities' && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Управление удобствами</h2>
-                
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Добавить новое удобство</h3>
-                  <div className="flex gap-4">
-                    <input
-                      type="text"
-                      value={newAmenity}
-                      onChange={(e) => setNewAmenity(e.target.value)}
-                      placeholder="Название удобства"
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddAmenity()}
-                    />
-                    <button
-                      onClick={handleAddAmenity}
-                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Добавить
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Стандартные удобства</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {defaultAmenities.map((amenity, index) => (
-                        <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                          <Star className="w-5 h-5 text-blue-500 mr-3" />
-                          <span className="text-gray-700">{amenity}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Пользовательские удобства</h3>
-                    {customAmenities.length === 0 ? (
-                      <p className="text-gray-500 italic">Пользовательские удобства не добавлены</p>
-                    ) : (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {customAmenities.map((amenity, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                            <div className="flex items-center">
-                              <Star className="w-5 h-5 text-blue-600 mr-3" />
-                              <span className="text-gray-700">{amenity}</span>
-                            </div>
-                            <button
-                              onClick={() => handleDeleteAmenity(amenity)}
-                              className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
             )}
 
@@ -674,9 +651,9 @@ const AdminPage: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Управление контактами</h2>
                 
                 <div className="space-y-8">
-                  {/* Основные контакты */}
+                  {/* Основная информация */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Основные контакты</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Основная информация</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -687,18 +664,20 @@ const AdminPage: React.FC = () => {
                           value={contactInfo.siteName}
                           onChange={(e) => setContactInfo({ ...contactInfo, siteName: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="В гости"
                         />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Телефон (в шапке сайта)
+                          Телефон (в шапке и на странице контактов)
                         </label>
                         <input
                           type="text"
                           value={contactInfo.phone}
                           onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="+7 965 411-15-55"
                         />
                       </div>
 
@@ -711,6 +690,7 @@ const AdminPage: React.FC = () => {
                           value={contactInfo.email}
                           onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="info@vgosti.ru"
                         />
                       </div>
 
@@ -723,12 +703,13 @@ const AdminPage: React.FC = () => {
                           value={contactInfo.address}
                           onChange={(e) => setContactInfo({ ...contactInfo, address: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Приморский бульвар, 123, Морской город, Россия"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Контакты в футере */}
+                  {/* Футер */}
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Контакты в футере</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -777,6 +758,7 @@ const AdminPage: React.FC = () => {
                           onChange={(e) => setContactInfo({ ...contactInfo, footerDescription: e.target.value })}
                           rows={4}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Уютные домики и современные квартиры на берегу моря..."
                         />
                       </div>
                     </div>
@@ -788,6 +770,111 @@ const AdminPage: React.FC = () => {
                   >
                     <Save className="w-4 h-4 mr-2" />
                     Сохранить контакты
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Почему выбирают нас */}
+            {activeTab === 'why-choose-us' && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Управление секцией "Почему выбирают нас"</h2>
+                
+                <div className="space-y-8">
+                  {/* Заголовки */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Заголовки секции</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Основной заголовок
+                        </label>
+                        <input
+                          type="text"
+                          value={whyChooseUsSettings.title}
+                          onChange={(e) => setWhyChooseUsSettings({ ...whyChooseUsSettings, title: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Почему выбирают нас"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Подзаголовок
+                        </label>
+                        <textarea
+                          value={whyChooseUsSettings.subtitle}
+                          onChange={(e) => setWhyChooseUsSettings({ ...whyChooseUsSettings, subtitle: e.target.value })}
+                          rows={3}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Мы создаем идеальные условия для вашего отдыха..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Блоки преимуществ */}
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Блоки преимуществ</h3>
+                      <button
+                        onClick={handleAddWhyChooseUsFeature}
+                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Добавить блок
+                      </button>
+                    </div>
+
+                    <div className="space-y-6">
+                      {whyChooseUsSettings.features.map((feature, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <h4 className="text-md font-medium text-gray-900">Блок {index + 1}</h4>
+                            <button
+                              onClick={() => handleRemoveWhyChooseUsFeature(index)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Заголовок блока
+                              </label>
+                              <input
+                                type="text"
+                                value={feature.title}
+                                onChange={(e) => handleUpdateWhyChooseUsFeature(index, 'title', e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Например: Лучшая локация"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Описание
+                              </label>
+                              <textarea
+                                value={feature.description}
+                                onChange={(e) => handleUpdateWhyChooseUsFeature(index, 'description', e.target.value)}
+                                rows={3}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Подробное описание преимущества..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSaveWhyChooseUs}
+                    className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Сохранить настройки
                   </button>
                 </div>
               </div>
@@ -835,7 +922,6 @@ const AdminPage: React.FC = () => {
                           </div>
                         </div>
                         
-                        {/* Исправленное отображение отзыва в админке */}
                         <div className="bg-gray-50 rounded-lg p-4 mb-4 max-w-full overflow-hidden">
                           <p className="admin-review-text text-gray-700 break-words whitespace-pre-wrap">{review.comment}</p>
                         </div>
@@ -905,37 +991,6 @@ const AdminPage: React.FC = () => {
                           rows={3}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Отдохните от городской суеты..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Секция "Почему выбирают нас" */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Секция "Почему выбирают нас"</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Заголовок секции
-                        </label>
-                        <input
-                          type="text"
-                          value={settings.whyChooseUsTitle || ''}
-                          onChange={(e) => setSettings({ ...settings, whyChooseUsTitle: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Почему выбирают нас"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Подзаголовок секции
-                        </label>
-                        <textarea
-                          value={settings.whyChooseUsSubtitle || ''}
-                          onChange={(e) => setSettings({ ...settings, whyChooseUsSubtitle: e.target.value })}
-                          rows={3}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Мы создаем идеальные условия..."
                         />
                       </div>
                     </div>
