@@ -218,13 +218,18 @@ body.modal-open {
   pointer-events: auto !important;
 }
 
-/* Принудительно показываем iframe карты */
-iframe[src*="google.com/maps"] {
+/* Принудительно показываем iframe карты - УНИВЕРСАЛЬНЫЕ СТИЛИ */
+iframe[src*="google.com/maps"],
+iframe[src*="yandex.ru/map-widget"],
+iframe[src*="yandex.ru/maps"] {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
   position: relative !important;
   z-index: 10 !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background-color: #f9fafb !important;
 }
 
 /* Убираем любые overlay элементы над картой */
@@ -232,8 +237,9 @@ iframe[src*="google.com/maps"] {
   pointer-events: none;
 }
 
-/* Стили для правильного отображения Google Maps */
-.google-map-iframe {
+/* Стили для правильного отображения карт */
+.google-map-iframe,
+.yandex-map-iframe {
   width: 100% !important;
   height: 384px !important; /* 96 * 4 = 384px для h-96 */
   border: 0 !important;
@@ -242,4 +248,18 @@ iframe[src*="google.com/maps"] {
   position: relative !important;
   z-index: 5 !important;
   background-color: #f9fafb;
+}
+
+/* Специальные стили для Яндекс карт */
+iframe[src*="yandex.ru"] {
+  min-height: 384px !important;
+}
+
+/* Принудительное отображение для всех типов карт */
+.map-container iframe[src*="maps"],
+.map-container iframe[src*="yandex"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }

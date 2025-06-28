@@ -934,14 +934,37 @@ const CabinForm: React.FC<{
     setFormData({ ...formData, amenities: newAmenities });
   };
 
-  // Функция для обработки карты - УЛУЧШЕННАЯ
+  // УЛУЧШЕННАЯ функция для обработки карты с поддержкой Яндекс карт
   const processMapUrl = (url: string): string => {
     if (!url.trim()) return '';
     
     const cleanUrl = url.trim();
     console.log('🗺️ Processing map URL in admin:', cleanUrl);
     
-    // Если это iframe, извлекаем src
+    // ЯНДЕКС КАРТЫ - обработка HTML кода
+    if (cleanUrl.includes('yandex.ru')) {
+      console.log('🗺️ Yandex Maps detected in admin');
+      
+      // Если это полный HTML код с iframe
+      if (cleanUrl.includes('<iframe')) {
+        const iframeSrcMatch = cleanUrl.match(/src="([^"]*yandex\.ru[^"]*)"/i);
+        if (iframeSrcMatch) {
+          console.log('✅ Extracted Yandex iframe src in admin:', iframeSrcMatch[1]);
+          return iframeSrcMatch[1];
+        }
+      }
+      
+      // Если это уже готовая ссылка на виджет
+      if (cleanUrl.includes('yandex.ru/map-widget')) {
+        console.log('✅ Direct Yandex widget URL in admin');
+        return cleanUrl;
+      }
+      
+      // Возвращаем как есть для Яндекс карт
+      return cleanUrl;
+    }
+    
+    // GOOGLE MAPS - существующая логика
     if (cleanUrl.includes('<iframe')) {
       const srcMatch = cleanUrl.match(/src="([^"]+)"/i);
       if (srcMatch) {
@@ -950,22 +973,19 @@ const CabinForm: React.FC<{
       }
     }
     
-    // Если это уже готовая embed ссылка
     if (cleanUrl.includes('google.com/maps/embed')) {
-      console.log('✅ Already embed URL');
+      console.log('✅ Already Google embed URL');
       return cleanUrl;
     }
     
-    // Если это обычная ссылка Google Maps, конвертируем в embed
     if (cleanUrl.includes('google.com/maps') || cleanUrl.includes('maps.google.com')) {
       let embedUrl = cleanUrl.replace(/google\.com\/maps/g, 'google.com/maps/embed');
       embedUrl = embedUrl.replace(/maps\.google\.com/g, 'google.com/maps/embed');
-      console.log('✅ Converted to embed:', embedUrl);
+      console.log('✅ Converted Google Maps to embed:', embedUrl);
       return embedUrl;
     }
     
-    // Для всех остальных случаев возвращаем как есть
-    console.log('✅ Using URL as is:', cleanUrl);
+    console.log('✅ Using URL as is in admin:', cleanUrl);
     return cleanUrl;
   };
 
@@ -995,7 +1015,7 @@ const CabinForm: React.FC<{
       mapUrl: processedMapUrl
     };
 
-    console.log('💾 Saving cabin with map URL:', processedMapUrl);
+    console.log('💾 Saving cabin with processed map URL:', processedMapUrl);
     onSave(dataToSave);
   };
 
@@ -1087,17 +1107,19 @@ const CabinForm: React.FC<{
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Карта Google Maps
+                Карта (Google Maps или Яндекс.Карты)
               </label>
               <textarea
                 value={formData.mapUrl}
                 onChange={(e) => setFormData({ ...formData, mapUrl: e.target.value })}
-                rows={3}
+                rows={4}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Вставьте ссылку Google Maps или полный iframe код"
+                placeholder="Вставьте полный HTML код карты (с тегами <div> и <iframe>) или просто ссылку"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Можно вставить: ссылку Google Maps, iframe код целиком, или embed ссылку
+                ✅ Поддерживается: Google Maps (ссылки и iframe), Яндекс.Карты (полный HTML код)
+                <br />
+                📝 Для Яндекс.Карт: скопируйте весь код целиком из конструктора карт
               </p>
             </div>
 
