@@ -68,7 +68,7 @@ const HomePage: React.FC = () => {
       <div className="bg-gray-50/95 backdrop-blur-sm">
         <FeaturedCabins />
         
-        {/* Gallery Section */}
+        {/* Gallery Section - ПРОСТАЯ СЕТКА КАК БЫЛО */}
         <section className="py-20 bg-white/95 backdrop-blur-sm">
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
@@ -79,7 +79,19 @@ const HomePage: React.FC = () => {
                 Посмотрите на наши уютные домики и современные квартиры с потрясающими видами
               </p>
             </div>
-            <PhotoGallery images={galleryImages} alt="Галерея объектов недвижимости" />
+            
+            {/* Простая сетка изображений для главной страницы */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {galleryImages.slice(0, 6).map((image, index) => (
+                <div key={index} className="aspect-video overflow-hidden rounded-2xl group cursor-pointer">
+                  <img
+                    src={image}
+                    alt={`Галерея ${index + 1}`}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </section>
         

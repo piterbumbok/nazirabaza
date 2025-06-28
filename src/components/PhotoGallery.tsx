@@ -75,64 +75,68 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
 
   return (
     <>
-      <div className="space-y-4">
-        {/* Главное изображение */}
-        <div className="relative group">
-          <div 
-            className="w-full h-96 md:h-[500px] overflow-hidden rounded-2xl cursor-pointer bg-gray-100"
-            onClick={() => openGallery(mainImage)}
+      {/* Красивая сетка фотографий */}
+      <div className="grid grid-cols-4 gap-4 h-96">
+        {/* Главное большое фото */}
+        <div 
+          className="col-span-2 row-span-2 relative group cursor-pointer overflow-hidden rounded-2xl bg-gray-100"
+          onClick={() => openGallery(0)}
+        >
+          <img
+            src={images[0]}
+            alt={`${alt} - главное фото`}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
+            }}
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-4">
+              <ZoomIn className="w-8 h-8 text-gray-800" />
+            </div>
+          </div>
+          {/* Индикатор количества фото */}
+          <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-2 rounded-full text-sm font-medium">
+            {images.length} фото
+          </div>
+        </div>
+
+        {/* Остальные фото в сетке */}
+        {images.slice(1, 5).map((image, index) => (
+          <div
+            key={index + 1}
+            className="relative group cursor-pointer overflow-hidden rounded-xl bg-gray-100"
+            onClick={() => openGallery(index + 1)}
           >
             <img
-              src={images[mainImage]}
-              alt={`${alt} - главное фото`}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              src={image}
+              alt={`${alt} - фото ${index + 2}`}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
               }}
             />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center">
               <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-3">
                 <ZoomIn className="w-6 h-6 text-gray-800" />
               </div>
             </div>
-            {/* Индикатор количества фото */}
-            <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-medium">
-              {mainImage + 1} / {images.length}
-            </div>
           </div>
-        </div>
+        ))}
 
-        {/* Горизонтальная прокрутка миниатюр */}
-        {images.length > 1 && (
-          <div className="relative">
-            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-              {images.map((image, index) => (
-                <div
-                  key={index}
-                  className={`flex-shrink-0 w-24 h-24 md:w-28 md:h-28 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 ${
-                    index === mainImage 
-                      ? 'ring-3 ring-blue-500 ring-offset-2 scale-105' 
-                      : 'hover:scale-105 hover:ring-2 hover:ring-blue-300 hover:ring-offset-1'
-                  }`}
-                  onClick={() => selectMainImage(index)}
-                >
-                  <img
-                    src={image}
-                    alt={`${alt} - миниатюра ${index + 1}`}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
-                    }}
-                  />
-                </div>
-              ))}
+        {/* Если фото больше 5, показываем кнопку "Еще фото" */}
+        {images.length > 5 && (
+          <div
+            className="relative group cursor-pointer overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center"
+            onClick={() => openGallery(5)}
+          >
+            <div className="text-center text-white">
+              <ZoomIn className="w-8 h-8 mx-auto mb-2" />
+              <p className="text-sm font-medium">+{images.length - 5}</p>
+              <p className="text-xs opacity-90">еще фото</p>
             </div>
-            
-            {/* Градиенты для указания прокрутки */}
-            <div className="absolute left-0 top-0 bottom-2 w-8 bg-gradient-to-r from-white to-transparent pointer-events-none"></div>
-            <div className="absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none"></div>
           </div>
         )}
       </div>
@@ -171,11 +175,11 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
           )}
 
           {/* Главное изображение */}
-          <div className="relative max-h-[90vh] max-w-[90vw]">
+          <div className="relative max-h-[85vh] max-w-[90vw]">
             <img
               src={images[currentIndex]}
               alt={`${alt} - фото ${currentIndex + 1}`}
-              className="max-h-[90vh] max-w-[90vw] object-contain"
+              className="max-h-[85vh] max-w-[90vw] object-contain"
               onClick={(e) => e.stopPropagation()}
             />
           </div>
@@ -190,27 +194,33 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
             
             {/* Миниатюры для навигации */}
             {images.length > 1 && (
-              <div className="flex justify-center space-x-2 px-4 overflow-x-auto">
-                {images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentIndex(index);
-                    }}
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden transition-all duration-300 ${
-                      index === currentIndex 
-                        ? 'ring-2 ring-white scale-110' 
-                        : 'opacity-70 hover:opacity-100 hover:scale-105'
-                    }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`Миниатюра ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
+              <div className="flex justify-center space-x-2 px-4 overflow-x-auto max-w-full">
+                <div className="flex space-x-2">
+                  {images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentIndex(index);
+                      }}
+                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden transition-all duration-300 ${
+                        index === currentIndex 
+                          ? 'ring-2 ring-white scale-110' 
+                          : 'opacity-70 hover:opacity-100 hover:scale-105'
+                      }`}
+                    >
+                      <img
+                        src={image}
+                        alt={`Миниатюра ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
