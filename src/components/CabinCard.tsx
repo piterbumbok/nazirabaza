@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Users, Home, Bath } from 'lucide-react';
+import { MapPin, Users, Home, Bath, Image as ImageIcon } from 'lucide-react';
 import { Cabin } from '../types';
 import { formatPrice } from '../utils/formatPrice';
 import { Link } from 'react-router-dom';
@@ -13,16 +13,40 @@ const CabinCard: React.FC<CabinCardProps> = ({ cabin }) => {
     <Link to={`/cabin/${cabin.id}`}>
       <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 h-full flex flex-col transform hover:-translate-y-2 hover:scale-[1.02] group border border-gray-100">
         <div className="relative h-64 overflow-hidden rounded-t-2xl">
-          <img
-            src={cabin.images[0]}
-            alt={cabin.name}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          />
+          {cabin.images && cabin.images.length > 0 ? (
+            <>
+              <img
+                src={cabin.images[0]}
+                alt={cabin.name}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
+                }}
+              />
+              {/* Индикатор количества фото */}
+              {cabin.images.length > 1 && (
+                <div className="absolute top-4 right-4 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                  <ImageIcon className="w-3 h-3 mr-1" />
+                  {cabin.images.length}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+              <div className="text-center">
+                <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">Фото скоро появится</p>
+              </div>
+            </div>
+          )}
+          
           {cabin.featured && (
             <div className="absolute top-4 left-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
               ⭐ Популярный
             </div>
           )}
+          
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           <div className="absolute bottom-4 left-4 text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">
             <span className="text-2xl font-bold">{formatPrice(cabin.pricePerNight)}</span>
