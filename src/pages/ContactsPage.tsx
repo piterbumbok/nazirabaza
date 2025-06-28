@@ -59,7 +59,28 @@ const ContactsPage: React.FC = () => {
       try {
         const settings = await apiService.getSettings();
         if (settings.contactInfo) {
-          setContactInfo(prev => ({ ...prev, ...settings.contactInfo }));
+          setContactInfo(prev => ({ 
+            ...prev, 
+            phone: settings.contactInfo.phone || prev.phone,
+            email: settings.contactInfo.email || prev.email,
+            address: settings.contactInfo.address || prev.address,
+            whatsapp: settings.contactInfo.phone?.replace(/[^0-9]/g, '') || prev.whatsapp.replace(/[^0-9]/g, '')
+          }));
+        }
+        
+        // Для обратной совместимости
+        if (settings.phone) {
+          setContactInfo(prev => ({ 
+            ...prev, 
+            phone: settings.phone,
+            whatsapp: settings.phone.replace(/[^0-9]/g, '')
+          }));
+        }
+        if (settings.email) {
+          setContactInfo(prev => ({ ...prev, email: settings.email }));
+        }
+        if (settings.address) {
+          setContactInfo(prev => ({ ...prev, address: settings.address }));
         }
       } catch (error) {
         console.error('Error loading contact info:', error);
@@ -86,7 +107,7 @@ Email: ${formData.email}
 Сообщение: ${formData.message}`;
 
     const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://api.whatsapp.com/send/?phone=${contactInfo.whatsapp.replace('+', '')}&text=${encodedMessage}&type=phone_number&app_absent=0`;
+    const whatsappUrl = `https://api.whatsapp.com/send/?phone=${contactInfo.whatsapp}&text=${encodedMessage}&type=phone_number&app_absent=0`;
     
     window.open(whatsappUrl, '_blank');
     
@@ -158,12 +179,12 @@ Email: ${formData.email}
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-1">WhatsApp</h3>
                       <a 
-                        href={`https://api.whatsapp.com/send/?phone=${contactInfo.whatsapp.replace('+', '')}&text=Здравствуйте!&type=phone_number&app_absent=0`}
+                        href={`https://api.whatsapp.com/send/?phone=${contactInfo.whatsapp}&text=Здравствуйте!&type=phone_number&app_absent=0`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-green-600 hover:text-green-700 text-lg"
                       >
-                        {contactInfo.whatsapp}
+                        {contactInfo.phone}
                       </a>
                     </div>
                   </div>

@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Home, Phone } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { apiService } from '../services/api';
 
 interface HeaderProps {
   phone?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ phone = '+7 965 411-15-55' }) => {
+const Header: React.FC<HeaderProps> = ({ phone: propPhone }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [phone, setPhone] = useState(propPhone || '+7 965 411-15-55');
+  const [siteName, setSiteName] = useState('В гости');
   const location = useLocation();
   
   // Check if we're on the home page
@@ -26,6 +29,41 @@ const Header: React.FC<HeaderProps> = ({ phone = '+7 965 411-15-55' }) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Загружаем контакты из настроек
+  useEffect(() => {
+    const loadContacts = async () => {
+      try {
+        const settings = await apiService.getSettings();
+        if (settings.contactInfo) {
+          if (settings.contactInfo.phone) {
+            setPhone(settings.contactInfo.phone);
+          }
+          if (settings.contactInfo.siteName) {
+            setSiteName(settings.contactInfo.siteName);
+          }
+        }
+        // Для обратной совместимости
+        if (settings.phone) {
+          setPhone(settings.phone);
+        }
+        if (settings.siteName) {
+          setSiteName(settings.siteName);
+        }
+      } catch (error) {
+        console.error('Error loading contacts:', error);
+      }
+    };
+
+    loadContacts();
+  }, []);
+
+  // Используем переданный телефон, если он есть
+  useEffect(() => {
+    if (propPhone) {
+      setPhone(propPhone);
+    }
+  }, [propPhone]);
 
   // Determine header styling based on page and scroll state
   const getHeaderStyle = () => {
@@ -82,7 +120,7 @@ const Header: React.FC<HeaderProps> = ({ phone = '+7 965 411-15-55' }) => {
             <Home className="w-5 h-5 text-white" />
           </div>
           <h1 className={`text-2xl font-bold transition-colors duration-300 ${getTextColor()}`}>
-            В гости
+            {siteName}
           </h1>
         </Link>
 

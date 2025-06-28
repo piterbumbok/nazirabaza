@@ -15,6 +15,17 @@ const Footer: React.FC = () => {
     const loadFooterContent = async () => {
       try {
         const settings = await apiService.getSettings();
+        if (settings.contactInfo) {
+          setFooterContent(prev => ({
+            siteName: settings.contactInfo.siteName || prev.siteName,
+            footerDescription: settings.contactInfo.footerDescription || prev.footerDescription,
+            footerPhone: settings.contactInfo.footerPhone || prev.footerPhone,
+            footerEmail: settings.contactInfo.footerEmail || prev.footerEmail,
+            footerAddress: settings.contactInfo.footerAddress || prev.footerAddress
+          }));
+        }
+        
+        // Для обратной совместимости
         if (Object.keys(settings).length > 0) {
           setFooterContent(prev => ({
             siteName: settings.siteName || prev.siteName,
@@ -69,11 +80,15 @@ const Footer: React.FC = () => {
               </li>
               <li className="flex items-center">
                 <Phone className="w-5 h-5 mr-3 flex-shrink-0 text-blue-400" />
-                <span className="text-gray-300">{footerContent.footerPhone}</span>
+                <a href={`tel:${footerContent.footerPhone}`} className="text-gray-300 hover:text-white transition-colors">
+                  {footerContent.footerPhone}
+                </a>
               </li>
               <li className="flex items-center">
                 <Mail className="w-5 h-5 mr-3 flex-shrink-0 text-blue-400" />
-                <span className="text-gray-300">{footerContent.footerEmail}</span>
+                <a href={`mailto:${footerContent.footerEmail}`} className="text-gray-300 hover:text-white transition-colors">
+                  {footerContent.footerEmail}
+                </a>
               </li>
             </ul>
           </div>
