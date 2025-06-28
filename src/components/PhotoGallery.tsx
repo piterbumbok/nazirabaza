@@ -9,36 +9,10 @@ interface PhotoGalleryProps {
 const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
   const [showGallery, setShowGallery] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [visibleImages, setVisibleImages] = useState<string[]>([]);
-  const [currentSet, setCurrentSet] = useState(0);
-
-  // Автоматическая смена фото каждые 3 секунды
-  useEffect(() => {
-    if (!images || images.length <= 5) {
-      setVisibleImages(images || []);
-      return;
-    }
-
-    // Если фото больше 5, показываем по 5 и меняем их
-    const interval = setInterval(() => {
-      setCurrentSet(prev => {
-        const nextSet = (prev + 1) % Math.ceil(images.length / 5);
-        const startIndex = nextSet * 5;
-        const endIndex = Math.min(startIndex + 5, images.length);
-        setVisibleImages(images.slice(startIndex, endIndex));
-        return nextSet;
-      });
-    }, 3000);
-
-    // Инициализируем первый набор
-    setVisibleImages(images.slice(0, 5));
-
-    return () => clearInterval(interval);
-  }, [images]);
 
   if (!images || images.length === 0) {
     return (
-      <div className="w-full h-96 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center">
+      <div className="w-full h-64 md:h-96 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
             <ZoomIn className="w-8 h-8 text-gray-500" />
@@ -96,71 +70,128 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
 
   return (
     <>
-      {/* Красивая сетка фотографий с автоматической сменой */}
-      <div className="grid grid-cols-4 gap-4 h-96">
-        {/* Главное большое фото */}
-        <div 
-          className="col-span-2 row-span-2 relative group cursor-pointer overflow-hidden rounded-2xl bg-gray-100"
-          onClick={() => openGallery(0)}
-        >
-          <img
-            src={visibleImages[0] || images[0]}
-            alt={`${alt} - главное фото`}
-            className="w-full h-full object-cover transition-all duration-1000 group-hover:scale-110"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
-            }}
-          />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-4">
-              <ZoomIn className="w-8 h-8 text-gray-800" />
+      {/* СТАТИЧНАЯ галерея БЕЗ автосмены для страниц домиков */}
+      <div className="w-full">
+        {/* Мобильная версия - вертикальная прокрутка */}
+        <div className="block md:hidden">
+          <div className="space-y-4">
+            {/* Главное фото */}
+            <div 
+              className="relative group cursor-pointer overflow-hidden rounded-2xl bg-gray-100 aspect-video"
+              onClick={() => openGallery(0)}
+            >
+              <img
+                src={images[0]}
+                alt={`${alt} - главное фото`}
+                className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
+                }}
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-4">
+                  <ZoomIn className="w-8 h-8 text-gray-800" />
+                </div>
+              </div>
+              
+              {/* Индикатор количества фото */}
+              <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-2 rounded-full text-sm font-medium">
+                {images.length} фото
+              </div>
             </div>
-          </div>
-          
-          {/* Индикатор количества фото и автосмены */}
-          <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-2 rounded-full text-sm font-medium">
-            {images.length} фото
-            {images.length > 5 && (
-              <div className="flex items-center mt-1">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse mr-1"></div>
-                <span className="text-xs">авто</span>
+
+            {/* Остальные фото в горизонтальной прокрутке */}
+            {images.length > 1 && (
+              <div className="overflow-x-auto scrollbar-hide">
+                <div className="flex space-x-3 pb-2">
+                  {images.slice(1).map((image, index) => (
+                    <div
+                      key={index}
+                      className="flex-shrink-0 w-24 h-24 relative group cursor-pointer overflow-hidden rounded-xl bg-gray-100"
+                      onClick={() => openGallery(index + 1)}
+                    >
+                      <img
+                        src={image}
+                        alt={`${alt} - фото ${index + 2}`}
+                        className="w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-2">
+                          <ZoomIn className="w-4 h-4 text-gray-800" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Остальные фото в сетке с плавной сменой */}
-        {visibleImages.slice(1, 5).map((image, index) => (
-          <div
-            key={`${currentSet}-${index}`}
-            className="relative group cursor-pointer overflow-hidden rounded-xl bg-gray-100"
-            onClick={() => openGallery(index + 1)}
-          >
-            <img
-              src={image}
-              alt={`${alt} - фото ${index + 2}`}
-              className="w-full h-full object-cover transition-all duration-1000 group-hover:scale-110"
-              style={{
-                animation: images.length > 5 ? 'fadeInScale 1s ease-in-out' : 'none'
-              }}
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
-              }}
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center">
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-3">
-                <ZoomIn className="w-6 h-6 text-gray-800" />
+        {/* Десктопная версия - сетка */}
+        <div className="hidden md:block">
+          <div className="grid grid-cols-4 gap-4 h-96">
+            {/* Главное большое фото */}
+            <div 
+              className="col-span-2 row-span-2 relative group cursor-pointer overflow-hidden rounded-2xl bg-gray-100"
+              onClick={() => openGallery(0)}
+            >
+              <img
+                src={images[0]}
+                alt={`${alt} - главное фото`}
+                className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
+                }}
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-4">
+                  <ZoomIn className="w-8 h-8 text-gray-800" />
+                </div>
+              </div>
+              
+              {/* Индикатор количества фото */}
+              <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-2 rounded-full text-sm font-medium">
+                {images.length} фото
               </div>
             </div>
-          </div>
-        ))}
 
-        {/* Если фото меньше 5, заполняем пустые ячейки */}
-        {visibleImages.length < 5 && Array.from({ length: 5 - visibleImages.length }).map((_, index) => (
-          <div key={`empty-${index}`} className="bg-gray-100 rounded-xl"></div>
-        ))}
+            {/* Остальные фото в сетке */}
+            {images.slice(1, 5).map((image, index) => (
+              <div
+                key={index}
+                className="relative group cursor-pointer overflow-hidden rounded-xl bg-gray-100"
+                onClick={() => openGallery(index + 1)}
+              >
+                <img
+                  src={image}
+                  alt={`${alt} - фото ${index + 2}`}
+                  className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg';
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 rounded-full p-3">
+                    <ZoomIn className="w-6 h-6 text-gray-800" />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Если фото меньше 5, заполняем пустые ячейки */}
+            {images.length < 5 && Array.from({ length: 5 - images.length }).map((_, index) => (
+              <div key={`empty-${index}`} className="bg-gray-100 rounded-xl"></div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Полноэкранная галерея */}
@@ -248,19 +279,6 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images, alt }) => {
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes fadeInScale {
-          0% {
-            opacity: 0.7;
-            transform: scale(0.95);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-      `}</style>
     </>
   );
 };

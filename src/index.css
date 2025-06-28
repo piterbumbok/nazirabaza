@@ -176,16 +176,16 @@ body.modal-open {
   transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Эффект пульсации для индикаторов */
+/* Эффект пульсации для индикаторов - МЯГКИЙ */
 @keyframes pulse-soft {
   0%, 100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.7;
+    opacity: 0.6;
   }
 }
 
 .animate-pulse-soft {
-  animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: pulse-soft 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

@@ -47,7 +47,7 @@ const HomePage: React.FC = () => {
       // Если фото 6 или меньше - показываем все
       setVisibleImages(galleryImages);
     } else {
-      // Если больше 6 - показываем 6 и меняем их каждые 4 секунды
+      // Если больше 6 - показываем 6 и меняем их каждые 8 секунд (увеличено с 4)
       const interval = setInterval(() => {
         setCurrentImageSet(prev => {
           const nextSet = (prev + 1) % Math.ceil(galleryImages.length / 6);
@@ -64,7 +64,7 @@ const HomePage: React.FC = () => {
           setVisibleImages(newImages);
           return nextSet;
         });
-      }, 4000);
+      }, 8000); // Увеличено с 4000 до 8000 мс
 
       // Инициализируем первый набор
       setVisibleImages(galleryImages.slice(0, 6));
@@ -155,8 +155,8 @@ const HomePage: React.FC = () => {
               {/* Индикатор автосмены */}
               {galleryImages.length > 6 && (
                 <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></div>
-                  Показано 6 из {galleryImages.length} фото • Автосмена
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse-soft mr-2"></div>
+                  Показано 6 из {galleryImages.length} фото • Автосмена каждые 8 сек
                 </div>
               )}
             </div>
@@ -175,7 +175,7 @@ const HomePage: React.FC = () => {
                   `}
                   onClick={() => openGallery(index)}
                   style={{
-                    animation: galleryImages.length > 6 ? 'fadeInSlide 1s ease-out' : 'none'
+                    animation: galleryImages.length > 6 ? 'fadeInSlide 1.5s ease-out' : 'none'
                   }}
                 >
                   <img
@@ -270,19 +270,6 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes fadeInSlide {
-          0% {
-            opacity: 0;
-            transform: translateY(20px) scale(0.95);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
     </div>
   );
 };
