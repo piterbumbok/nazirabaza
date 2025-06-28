@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Star, MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
 import ReviewModal from './ReviewModal';
 
@@ -12,6 +13,7 @@ interface Review {
 }
 
 const Testimonials: React.FC = () => {
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
@@ -60,6 +62,18 @@ const Testimonials: React.FC = () => {
   const truncateText = (text: string, maxLength: number = 150) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
+  };
+
+  // НОВАЯ функция - переход на страницу отзывов с открытием конкретного отзыва
+  const goToReviewsPage = (review: Review, event: React.MouseEvent) => {
+    event.preventDefault();
+    // Переходим на страницу отзывов с параметром ID отзыва
+    navigate(`/reviews?open=${review.id}`, { 
+      state: { 
+        reviewToOpen: review,
+        fromHomePage: true 
+      } 
+    });
   };
 
   const openReviewModal = (review: Review, event: React.MouseEvent) => {
@@ -134,7 +148,7 @@ const Testimonials: React.FC = () => {
                   
                   {review.comment.length > 150 && (
                     <button
-                      onClick={(e) => openReviewModal(review, e)}
+                      onClick={(e) => goToReviewsPage(review, e)}
                       className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
                     >
                       <MessageSquare className="w-4 h-4 mr-1" />
@@ -147,17 +161,17 @@ const Testimonials: React.FC = () => {
           </div>
 
           <div className="text-center mt-12">
-            <a
-              href="/reviews"
+            <button
+              onClick={() => navigate('/reviews')}
               className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Оставить отзыв
-            </a>
+              Все отзывы и оставить свой
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Review Modal */}
+      {/* Review Modal - оставляем для совместимости */}
       {selectedReview && (
         <ReviewModal
           review={selectedReview}

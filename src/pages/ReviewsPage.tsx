@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ReviewModal from '../components/ReviewModal';
@@ -15,6 +16,8 @@ interface Review {
 }
 
 const ReviewsPage: React.FC = () => {
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -40,6 +43,28 @@ const ReviewsPage: React.FC = () => {
   useEffect(() => {
     loadReviews();
   }, []);
+
+  // НОВЫЙ useEffect для обработки перехода с главной страницы
+  useEffect(() => {
+    const openReviewId = searchParams.get('open');
+    const reviewFromState = location.state?.reviewToOpen;
+    
+    if (openReviewId && reviewFromState) {
+      // Если пришли с главной страницы с конкретным отзывом
+      console.log('🎯 Открываем отзыв с главной страницы:', reviewFromState);
+      setSelectedReview(reviewFromState);
+      
+      // Очищаем URL от параметра
+      window.history.replaceState({}, '', '/reviews');
+    } else if (openReviewId && reviews.length > 0) {
+      // Если есть ID в URL, но нет данных в state - ищем в загруженных отзывах
+      const reviewToOpen = reviews.find(r => r.id === openReviewId);
+      if (reviewToOpen) {
+        setSelectedReview(reviewToOpen);
+        window.history.replaceState({}, '', '/reviews');
+      }
+    }
+  }, [searchParams, location.state, reviews]);
 
   const loadReviews = async () => {
     try {
@@ -70,10 +95,12 @@ const ReviewsPage: React.FC = () => {
   };
 
   const openReviewModal = (review: Review) => {
+    console.log('🔍 Открываем модальное окно отзыва:', review);
     setSelectedReview(review);
   };
 
   const closeReviewModal = () => {
+    console.log('❌ Закрываем модальное окно отзыва');
     setSelectedReview(null);
   };
 
