@@ -13,6 +13,7 @@ interface ContactInfo {
   workingHours: string;
   whatsapp: string;
   telegram: string;
+  mapEmbedCode: string; // НОВОЕ ПОЛЕ для карты
   socialMedia: {
     facebook: string;
     instagram: string;
@@ -34,6 +35,7 @@ const ContactsPage: React.FC = () => {
     workingHours: 'Ежедневно с 9:00 до 21:00',
     whatsapp: '+79654111555',
     telegram: '@vgosti_support',
+    mapEmbedCode: '<div style="position:relative;overflow:hidden;"><a href="https://yandex.ru/maps?utm_medium=mapframe&utm_source=maps" style="color:#eee;font-size:12px;position:absolute;top:0px;">Яндекс Карты</a><a href="https://yandex.ru/maps/?from=mapframe&ll=47.696810%2C42.867473&mode=usermaps&source=mapframe&um=constructor%3A4ec129b30eeac33966034f42ed4c917795c78cd9c2dcff7e69aa24de378b4d74&utm_medium=mapframe&utm_source=maps&z=18" style="color:#eee;font-size:12px;position:absolute;top:14px;">Яндекс Карты — транспорт, навигация, поиск мест</a><iframe src="https://yandex.ru/map-widget/v1/?from=mapframe&ll=47.696810%2C42.867473&mode=usermaps&source=mapframe&um=constructor%3A4ec129b30eeac33966034f42ed4c917795c78cd9c2dcff7e69aa24de378b4d74&utm_source=mapframe&z=18" width="560" height="400" frameborder="1" allowfullscreen="true" style="position:relative;"></iframe></div>',
     socialMedia: {
       facebook: 'https://facebook.com/vgosti',
       instagram: 'https://instagram.com/vgosti',
@@ -64,6 +66,7 @@ const ContactsPage: React.FC = () => {
             phone: settings.contactInfo.phone || prev.phone,
             email: settings.contactInfo.email || prev.email,
             address: settings.contactInfo.address || prev.address,
+            mapEmbedCode: settings.contactInfo.mapEmbedCode || prev.mapEmbedCode,
             whatsapp: settings.contactInfo.phone?.replace(/[^0-9]/g, '') || prev.whatsapp.replace(/[^0-9]/g, '')
           }));
         }
@@ -81,6 +84,9 @@ const ContactsPage: React.FC = () => {
         }
         if (settings.address) {
           setContactInfo(prev => ({ ...prev, address: settings.address }));
+        }
+        if (settings.mapEmbedCode) {
+          setContactInfo(prev => ({ ...prev, mapEmbedCode: settings.mapEmbedCode }));
         }
       } catch (error) {
         console.error('Error loading contact info:', error);
@@ -123,6 +129,28 @@ Email: ${formData.email}
       [e.target.name]: e.target.value
     });
   };
+
+  // Функция для извлечения iframe из HTML кода карты
+  const extractMapIframe = (embedCode: string): string => {
+    if (!embedCode || !embedCode.trim()) return '';
+    
+    // Если это уже iframe
+    if (embedCode.includes('<iframe')) {
+      const iframeMatch = embedCode.match(/<iframe[^>]*src="([^"]+)"[^>]*>/);
+      if (iframeMatch) {
+        return iframeMatch[1];
+      }
+    }
+    
+    // Если это просто URL
+    if (embedCode.includes('yandex.ru') || embedCode.includes('google.com/maps')) {
+      return embedCode;
+    }
+    
+    return '';
+  };
+
+  const mapSrc = extractMapIframe(contactInfo.mapEmbedCode);
 
   if (loading) {
     return (
@@ -305,17 +333,33 @@ Email: ${formData.email}
           </div>
         </section>
 
-        {/* Map Section */}
+        {/* Map Section - РАБОЧАЯ КАРТА */}
         <section className="py-20 bg-gray-50">
           <div className="container mx-auto px-4">
             <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Как нас найти</h2>
             <div className="bg-white rounded-2xl shadow-sm p-8">
-              <div className="h-96 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-                  <p className="text-blue-800 font-medium text-lg">Интерактивная карта</p>
-                  <p className="text-blue-600">{contactInfo.address}</p>
-                </div>
+              <div className="map-container h-96 rounded-xl overflow-hidden border border-gray-200">
+                {mapSrc ? (
+                  <iframe
+                    src={mapSrc}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title="Карта расположения"
+                    className="yandex-map-iframe"
+                  />
+                ) : (
+                  <div className="h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                    <div className="text-center">
+                      <MapPin className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+                      <p className="text-blue-800 font-medium text-lg">Интерактивная карта</p>
+                      <p className="text-blue-600">{contactInfo.address}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

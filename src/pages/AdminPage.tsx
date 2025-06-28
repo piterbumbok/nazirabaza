@@ -44,6 +44,12 @@ interface ContactInfo {
   email: string;
   address: string;
   footerDescription: string;
+  mapEmbedCode: string; // НОВОЕ ПОЛЕ для карты
+}
+
+interface WhyChooseUsFeature {
+  title: string;
+  description: string;
 }
 
 const AdminPage: React.FC = () => {
@@ -70,7 +76,8 @@ const AdminPage: React.FC = () => {
     phone: '+7 965 411-15-55',
     email: 'info@vgosti.ru',
     address: 'Приморский бульвар, 123, Морской город, Россия',
-    footerDescription: 'Уютные домики и современные квартиры на берегу моря для незабываемого отдыха.'
+    footerDescription: 'Уютные домики и современные квартиры на берегу моря для незабываемого отдыха.',
+    mapEmbedCode: '<div style="position:relative;overflow:hidden;"><a href="https://yandex.ru/maps?utm_medium=mapframe&utm_source=maps" style="color:#eee;font-size:12px;position:absolute;top:0px;">Яндекс Карты</a><a href="https://yandex.ru/maps/?from=mapframe&ll=47.696810%2C42.867473&mode=usermaps&source=mapframe&um=constructor%3A4ec129b30eeac33966034f42ed4c917795c78cd9c2dcff7e69aa24de378b4d74&utm_medium=mapframe&utm_source=maps&z=18" style="color:#eee;font-size:12px;position:absolute;top:14px;">Яндекс Карты — транспорт, навигация, поиск мест</a><iframe src="https://yandex.ru/map-widget/v1/?from=mapframe&ll=47.696810%2C42.867473&mode=usermaps&source=mapframe&um=constructor%3A4ec129b30eeac33966034f42ed4c917795c78cd9c2dcff7e69aa24de378b4d74&utm_source=mapframe&z=18" width="560" height="400" frameborder="1" allowfullscreen="true" style="position:relative;"></iframe></div>'
   });
 
   // Отзывы
@@ -80,6 +87,26 @@ const AdminPage: React.FC = () => {
   // Настройки
   const [settings, setSettings] = useState<AdminSettings>({});
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // "Почему выбирают нас" - ВОССТАНОВЛЕНО
+  const [whyChooseUsFeatures, setWhyChooseUsFeatures] = useState<WhyChooseUsFeature[]>([
+    {
+      title: 'Лучшая локация',
+      description: 'Все наши объекты расположены в живописных местах с прямым доступом к Каспийскому морю и потрясающими видами.'
+    },
+    {
+      title: 'Близость к морю',
+      description: 'Дорога до пляжа занимает не более 5 минут пешком от любого нашего объекта недвижимости.'
+    },
+    {
+      title: 'Комфорт и уют',
+      description: 'Каждый домик и квартира полностью оборудованы всем необходимым для комфортного отдыха.'
+    },
+    {
+      title: 'Безопасное бронирование',
+      description: 'Гарантированное бронирование без скрытых платежей и дополнительных комиссий.'
+    }
+  ]);
 
   // Аккаунт
   const [accountData, setAccountData] = useState({
@@ -137,6 +164,11 @@ const AdminPage: React.FC = () => {
       // Загружаем контакты
       if (settingsData.contactInfo) {
         setContactInfo(prev => ({ ...prev, ...settingsData.contactInfo }));
+      }
+      
+      // Загружаем "Почему выбирают нас"
+      if (settingsData.whyChooseUsFeatures && Array.isArray(settingsData.whyChooseUsFeatures)) {
+        setWhyChooseUsFeatures(settingsData.whyChooseUsFeatures);
       }
       
       // Загружаем отзывы
@@ -290,7 +322,14 @@ const AdminPage: React.FC = () => {
   const handleSaveSettings = async () => {
     try {
       setSavingSettings(true);
-      await apiService.updateSettings(settings);
+      
+      // Сохраняем все настройки включая "Почему выбирают нас"
+      const allSettings = {
+        ...settings,
+        whyChooseUsFeatures: whyChooseUsFeatures
+      };
+      
+      await apiService.updateSettings(allSettings);
       alert('Настройки сохранены!');
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -313,6 +352,22 @@ const AdminPage: React.FC = () => {
       console.error('Error saving account:', error);
       alert('Ошибка при сохранении данных аккаунта');
     }
+  };
+
+  // Управление "Почему выбирают нас"
+  const handleAddFeature = () => {
+    setWhyChooseUsFeatures([...whyChooseUsFeatures, { title: '', description: '' }]);
+  };
+
+  const handleRemoveFeature = (index: number) => {
+    setWhyChooseUsFeatures(whyChooseUsFeatures.filter((_, i) => i !== index));
+  };
+
+  const handleFeatureChange = (index: number, field: 'title' | 'description', value: string) => {
+    const updated = whyChooseUsFeatures.map((feature, i) => 
+      i === index ? { ...feature, [field]: value } : feature
+    );
+    setWhyChooseUsFeatures(updated);
   };
 
   // Форма логина
@@ -610,6 +665,23 @@ const AdminPage: React.FC = () => {
                     />
                   </div>
 
+                  {/* НОВОЕ ПОЛЕ ДЛЯ КАРТЫ */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Код карты (HTML)
+                    </label>
+                    <textarea
+                      value={contactInfo.mapEmbedCode}
+                      onChange={(e) => setContactInfo({ ...contactInfo, mapEmbedCode: e.target.value })}
+                      rows={6}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                      placeholder="Вставьте полный HTML код карты от Яндекс или Google Maps"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Вставьте полный HTML код карты, включая все теги &lt;div&gt; и &lt;iframe&gt;
+                    </p>
+                  </div>
+
                   <button
                     onClick={handleSaveContacts}
                     className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -738,9 +810,19 @@ const AdminPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Секция "Почему выбирают нас" */}
+                  {/* Секция "Почему выбирают нас" - ВОССТАНОВЛЕНА */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Секция "Почему выбирают нас"</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Секция "Почему выбирают нас"</h3>
+                      <button
+                        onClick={handleAddFeature}
+                        className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Добавить блок
+                      </button>
+                    </div>
+                    
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -765,6 +847,40 @@ const AdminPage: React.FC = () => {
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Мы создаем идеальные условия..."
                         />
+                      </div>
+                      
+                      {/* Блоки преимуществ */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-gray-900">Блоки преимуществ</h4>
+                        {whyChooseUsFeatures.map((feature, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-sm font-medium text-gray-700">Блок {index + 1}</span>
+                              <button
+                                onClick={() => handleRemoveFeature(index)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="space-y-3">
+                              <input
+                                type="text"
+                                value={feature.title}
+                                onChange={(e) => handleFeatureChange(index, 'title', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Заголовок блока"
+                              />
+                              <textarea
+                                value={feature.description}
+                                onChange={(e) => handleFeatureChange(index, 'description', e.target.value)}
+                                rows={3}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Описание блока"
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
