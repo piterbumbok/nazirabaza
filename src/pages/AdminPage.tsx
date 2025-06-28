@@ -44,6 +44,15 @@ interface ContactInfo {
   email: string;
   address: string;
   footerDescription: string;
+  footerPhone: string;
+  footerEmail: string;
+  footerAddress: string;
+  siteName: string;
+}
+
+interface WhyChooseUsFeature {
+  title: string;
+  description: string;
 }
 
 const AdminPage: React.FC = () => {
@@ -70,7 +79,35 @@ const AdminPage: React.FC = () => {
     phone: '+7 965 411-15-55',
     email: 'info@vgosti.ru',
     address: 'Приморский бульвар, 123, Морской город, Россия',
-    footerDescription: 'Уютные домики и современные квартиры на берегу моря для незабываемого отдыха.'
+    footerDescription: 'Уютные домики и современные квартиры на берегу моря для незабываемого отдыха.',
+    footerPhone: '+7 965 411-15-55',
+    footerEmail: 'info@vgosti.ru',
+    footerAddress: 'Приморский бульвар, 123, Морской город, Россия',
+    siteName: 'В гости'
+  });
+
+  // Почему выбирают нас
+  const [whyChooseUs, setWhyChooseUs] = useState({
+    title: 'Почему выбирают нас',
+    subtitle: 'Мы создаем идеальные условия для вашего отдыха на Каспийском море, уделяя внимание каждой детали.',
+    features: [
+      {
+        title: 'Лучшая локация',
+        description: 'Все наши объекты расположены в живописных местах с прямым доступом к Каспийскому морю и потрясающими видами.'
+      },
+      {
+        title: 'Близость к морю',
+        description: 'Дорога до пляжа занимает не более 5 минут пешком от любого нашего объекта недвижимости.'
+      },
+      {
+        title: 'Комфорт и уют',
+        description: 'Каждый домик и квартира полностью оборудованы всем необходимым для комфортного отдыха.'
+      },
+      {
+        title: 'Безопасное бронирование',
+        description: 'Гарантированное бронирование без скрытых платежей и дополнительных комиссий.'
+      }
+    ]
   });
 
   // Отзывы
@@ -135,8 +172,27 @@ const AdminPage: React.FC = () => {
       }
       
       // Загружаем контакты
-      if (settingsData.contactInfo) {
-        setContactInfo(prev => ({ ...prev, ...settingsData.contactInfo }));
+      if (settingsData.footerPhone || settingsData.footerEmail || settingsData.footerAddress) {
+        setContactInfo(prev => ({
+          ...prev,
+          footerPhone: settingsData.footerPhone || prev.footerPhone,
+          footerEmail: settingsData.footerEmail || prev.footerEmail,
+          footerAddress: settingsData.footerAddress || prev.footerAddress,
+          footerDescription: settingsData.footerDescription || prev.footerDescription,
+          siteName: settingsData.siteName || prev.siteName,
+          phone: settingsData.footerPhone || prev.phone,
+          email: settingsData.footerEmail || prev.email,
+          address: settingsData.footerAddress || prev.address
+        }));
+      }
+      
+      // Загружаем "Почему выбирают нас"
+      if (settingsData.whyChooseUsTitle || settingsData.whyChooseUsSubtitle || settingsData.whyChooseUsFeatures) {
+        setWhyChooseUs(prev => ({
+          title: settingsData.whyChooseUsTitle || prev.title,
+          subtitle: settingsData.whyChooseUsSubtitle || prev.subtitle,
+          features: settingsData.whyChooseUsFeatures || prev.features
+        }));
       }
       
       // Загружаем отзывы
@@ -254,12 +310,59 @@ const AdminPage: React.FC = () => {
   // Сохранение контактов
   const handleSaveContacts = async () => {
     try {
-      await apiService.updateSettings({ contactInfo });
+      await apiService.updateSettings({
+        footerPhone: contactInfo.footerPhone,
+        footerEmail: contactInfo.footerEmail,
+        footerAddress: contactInfo.footerAddress,
+        footerDescription: contactInfo.footerDescription,
+        siteName: contactInfo.siteName
+      });
       alert('Контакты сохранены!');
     } catch (error) {
       console.error('Error saving contacts:', error);
       alert('Ошибка при сохранении контактов');
     }
+  };
+
+  // Сохранение "Почему выбирают нас"
+  const handleSaveWhyChooseUs = async () => {
+    try {
+      await apiService.updateSettings({
+        whyChooseUsTitle: whyChooseUs.title,
+        whyChooseUsSubtitle: whyChooseUs.subtitle,
+        whyChooseUsFeatures: whyChooseUs.features
+      });
+      alert('Секция "Почему выбирают нас" сохранена!');
+    } catch (error) {
+      console.error('Error saving why choose us:', error);
+      alert('Ошибка при сохранении секции');
+    }
+  };
+
+  // Добавление новой особенности
+  const handleAddFeature = () => {
+    setWhyChooseUs(prev => ({
+      ...prev,
+      features: [...prev.features, { title: '', description: '' }]
+    }));
+  };
+
+  // Удаление особенности
+  const handleRemoveFeature = (index: number) => {
+    setWhyChooseUs(prev => ({
+      ...prev,
+      features: prev.features.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Обновление особенности
+  const handleUpdateFeature = (index: number, field: 'title' | 'description', value: string) => {
+    setWhyChooseUs(prev => ({
+      ...prev,
+      features: prev.features.map((feature, i) => 
+        i === index ? { ...feature, [field]: value } : feature
+      )
+    }));
   };
 
   // Модерация отзыва
@@ -402,6 +505,7 @@ const AdminPage: React.FC = () => {
                   { id: 'gallery', name: 'Галерея', icon: ImageIcon },
                   { id: 'contacts', name: 'Контакты', icon: Phone },
                   { id: 'reviews', name: 'Отзывы', icon: MessageSquare },
+                  { id: 'why-choose-us', name: 'Почему выбирают нас', icon: Star },
                   { id: 'settings', name: 'Настройки', icon: Settings },
                   { id: 'account', name: 'Аккаунт', icon: User }
                 ].map((item) => {
@@ -564,37 +668,53 @@ const AdminPage: React.FC = () => {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Телефон
+                      Название сайта
                     </label>
                     <input
                       type="text"
-                      value={contactInfo.phone}
-                      onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
+                      value={contactInfo.siteName}
+                      onChange={(e) => setContactInfo({ ...contactInfo, siteName: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="В гости"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
+                      Телефон в футере
+                    </label>
+                    <input
+                      type="text"
+                      value={contactInfo.footerPhone}
+                      onChange={(e) => setContactInfo({ ...contactInfo, footerPhone: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="+7 965 411-15-55"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email в футере
                     </label>
                     <input
                       type="email"
-                      value={contactInfo.email}
-                      onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
+                      value={contactInfo.footerEmail}
+                      onChange={(e) => setContactInfo({ ...contactInfo, footerEmail: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="info@vgosti.ru"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Адрес
+                      Адрес в футере
                     </label>
                     <input
                       type="text"
-                      value={contactInfo.address}
-                      onChange={(e) => setContactInfo({ ...contactInfo, address: e.target.value })}
+                      value={contactInfo.footerAddress}
+                      onChange={(e) => setContactInfo({ ...contactInfo, footerAddress: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Приморский бульвар, 123, Морской город, Россия"
                     />
                   </div>
 
@@ -607,6 +727,7 @@ const AdminPage: React.FC = () => {
                       onChange={(e) => setContactInfo({ ...contactInfo, footerDescription: e.target.value })}
                       rows={4}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Уютные домики и современные квартиры на берегу моря для незабываемого отдыха."
                     />
                   </div>
 
@@ -701,6 +822,106 @@ const AdminPage: React.FC = () => {
               </div>
             )}
 
+            {/* Почему выбирают нас */}
+            {activeTab === 'why-choose-us' && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Секция "Почему выбирают нас"</h2>
+                
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Заголовок секции
+                    </label>
+                    <input
+                      type="text"
+                      value={whyChooseUs.title}
+                      onChange={(e) => setWhyChooseUs({ ...whyChooseUs, title: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Почему выбирают нас"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Подзаголовок секции
+                    </label>
+                    <textarea
+                      value={whyChooseUs.subtitle}
+                      onChange={(e) => setWhyChooseUs({ ...whyChooseUs, subtitle: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Мы создаем идеальные условия для вашего отдыха..."
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Особенности</h3>
+                      <button
+                        onClick={handleAddFeature}
+                        className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Добавить
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {whyChooseUs.features.map((feature, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <h4 className="font-medium text-gray-900">Особенность {index + 1}</h4>
+                            <button
+                              onClick={() => handleRemoveFeature(index)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Заголовок
+                              </label>
+                              <input
+                                type="text"
+                                value={feature.title}
+                                onChange={(e) => handleUpdateFeature(index, 'title', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Название особенности"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Описание
+                              </label>
+                              <textarea
+                                value={feature.description}
+                                onChange={(e) => handleUpdateFeature(index, 'description', e.target.value)}
+                                rows={3}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Описание особенности"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSaveWhyChooseUs}
+                    className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Сохранить изменения
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Настройки */}
             {activeTab === 'settings' && (
               <div className="bg-white rounded-lg shadow-sm p-6">
@@ -733,37 +954,6 @@ const AdminPage: React.FC = () => {
                           rows={3}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Отдохните от городской суеты..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Секция "Почему выбирают нас" */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Секция "Почему выбирают нас"</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Заголовок секции
-                        </label>
-                        <input
-                          type="text"
-                          value={settings.whyChooseUsTitle || ''}
-                          onChange={(e) => setSettings({ ...settings, whyChooseUsTitle: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Почему выбирают нас"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Подзаголовок секции
-                        </label>
-                        <textarea
-                          value={settings.whyChooseUsSubtitle || ''}
-                          onChange={(e) => setSettings({ ...settings, whyChooseUsSubtitle: e.target.value })}
-                          rows={3}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Мы создаем идеальные условия..."
                         />
                       </div>
                     </div>
